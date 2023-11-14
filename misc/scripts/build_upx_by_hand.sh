@@ -96,7 +96,7 @@ check_submodule() {
 }
 
 # build
-upx_submodule_defs=
+upx_submodule_defs="-DWITH_THREADS"
 run "+" mkdir -p "build/by-hand"
 if check_submodule bzip2; then
     upx_submodule_defs="$upx_submodule_defs -DWITH_BZIP2"
