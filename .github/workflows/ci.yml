@@ -371,7 +371,7 @@ jobs:
           set s=%H%\src
           cat .GITREV.txt
           set /p GITREV=<.GITREV.txt
-          set UPX_DEFS=-DUPX_CONFIG_DISABLE_WSTRICT=0 -DUPX_CONFIG_DISABLE_WERROR=0 -DWITH_THREADS=0 -DWITH_BZIP2=0 -DWITH_ZSTD=0
+          set UPX_DEFS=-DUPX_CONFIG_DISABLE_WSTRICT=0 -DUPX_CONFIG_DISABLE_WERROR=0 -DWITH_THREADS=1 -DWITH_BZIP2=0 -DWITH_ZSTD=0
           set UPX_LIBS=%BDIR%\ucl\ucl.lib %BDIR%\zlib\zlib.lib
           @rem set UPX_LIBS=%BDIR%\bzip2\bzip2.lib %BDIR%\ucl\ucl.lib %BDIR%\zlib\zlib.lib %BDIR%\zstd\zstd.lib
           set sources=%s%\*.cpp %s%\check\*.cpp %s%\compress\*.cpp %s%\console\*.cpp %s%\filter\*.cpp %s%\util\*.cpp
