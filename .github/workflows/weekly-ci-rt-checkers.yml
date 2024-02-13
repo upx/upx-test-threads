@@ -20,11 +20,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # latest Alpine release + edge
+          # latest Alpine + edge
           - { container: 'alpine:3.19',      release: debug,   qemu: 'qemu-x86_64 -cpu Nehalem' }
           - { container: 'alpine:3.19',      release: release, qemu: 'qemu-x86_64 -cpu Nehalem' }
+          - { container: 'alpine:edge',      release: debug,   qemu: 'qemu-x86_64 -cpu Nehalem' }
           - { container: 'alpine:edge',      release: release, qemu: 'qemu-x86_64 -cpu Nehalem' }
+          # latest Alpine + edge
+          - { container: 'i386/alpine:3.19', release: debug,   qemu: 'qemu-i386' }
           - { container: 'i386/alpine:3.19', release: release, qemu: 'qemu-i386' }
+          - { container: 'i386/alpine:edge', release: debug,   qemu: 'qemu-i386' }
           - { container: 'i386/alpine:edge', release: release, qemu: 'qemu-i386' }
     name: ${{ format('{0} {1}', matrix.container, matrix.release) }}
     runs-on: ubuntu-latest
@@ -105,7 +109,8 @@ jobs:
       - name: 'Run testsuite clang-static - Valgrind'
         if: true # very slow
         run: |
-          export upx_exe_runner="valgrind --error-exitcode=1 --quiet"
+          export upx_exe_runner="valgrind --error-exitcode=1 --quiet --gen-suppressions=all"
+          upx_exe_runner="$upx_exe_runner --suppressions=$PWD/misc/valgrind/musl.supp"
           # on current GitHub CI, takes about 30 minutes for release and 80 minutes for debug builds
           # reduce time for debug builds to about 30 minutes
           test "$release" = "debug" && export UPX_TESTSUITE_LEVEL=4

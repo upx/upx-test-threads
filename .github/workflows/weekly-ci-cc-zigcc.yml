@@ -12,8 +12,8 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
-  # 2023-11-08
-  ZIG_DIST_VERSION: 0.12.0-dev.1502+b3462b7ce
+  # 2024-01-25
+  ZIG_DIST_VERSION: 0.12.0-dev.2341+92211135f
 
 jobs:
   job-linux-zigcc: # uses cmake + make
@@ -51,6 +51,9 @@ jobs:
     runs-on: ubuntu-latest
     container: 'alpine:3.19' # older versions such as alpine:3.12 also work; no-container also works
     env:
+      ##UPX_CONFIG_EXPECT_THREADS: 'ON'
+      # zig is currently missing winpthreads; see https://github.com/ziglang/zig/issues/10989
+      UPX_CONFIG_EXPECT_THREADS: ${{ contains(matrix.zig_target, '-windows-') && 'OFF' || 'ON' }}
       # for zig-cc wrapper scripts (see below):
       ZIG_CPPFLAGS: -DUPX_DOCTEST_CONFIG_MULTITHREADING
       ZIG_FLAGS: ${{ matrix.zig_flags }}
