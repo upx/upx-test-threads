@@ -10,6 +10,7 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
+  UPX_CONFIG_EXPECT_THREADS: 'ON'
 
 jobs:
   job-chimeralinux-clang: # uses cmake + make
@@ -23,7 +24,7 @@ jobs:
         run: |
           apk update && apk upgrade && apk add bsdtar clang cmake curl gmake
           for p in make; do ln -s -v ../../bin/g$p /usr/local/bin/$p; done
-          curl -OL https://github.com/upx/upx/releases/download/v4.2.1/upx-4.2.1-src.tar.xz
+          curl -OL https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug   CC="clang" CXX="clang++"
@@ -53,7 +54,7 @@ jobs:
           for p in make; do ln -s -v ../../bin/g$p /usr/local/bin/$p; done
           # install devel-static packages
           apk add libatomic-chimera-devel-static libcxx-devel-static musl-devel-static
-          curl -OL https://github.com/upx/upx/releases/download/v4.2.1/upx-4.2.1-src.tar.xz
+          curl -OL https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug   CC="clang -static" CXX="clang++ -static"
