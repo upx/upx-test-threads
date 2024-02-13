@@ -115,6 +115,7 @@ jobs:
           - { os: macos-11, run_fs_test: false } # macos-11 does not have "readlink -f"
           - { os: macos-12, run_fs_test: true }
           - { os: macos-13, run_fs_test: true }
+          - { os: macos-14, run_fs_test: true }
     name: ${{ format('by-hand clang {0}', matrix.os) }}
     runs-on: ${{ matrix.os }}
     steps:
