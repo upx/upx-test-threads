@@ -10,6 +10,7 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
+  UPX_CONFIG_EXPECT_THREADS: 'ON'
 
 jobs:
   job-alpinelinux-clang-static: # uses cmake + make
@@ -22,7 +23,7 @@ jobs:
       - name: ${{ format('Build clang {0}', matrix.container) }}
         run: |
           apk update && apk upgrade && apk add clang cmake make
-          wget https://github.com/upx/upx/releases/download/v4.2.1/upx-4.2.1-src.tar.xz
+          wget https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug   CC="clang -static" CXX="clang++ -static"
@@ -49,7 +50,7 @@ jobs:
       - name: ${{ format('Build gcc {0}', matrix.container) }}
         run: |
           apk update && apk upgrade && apk add cmake g++ make
-          wget https://github.com/upx/upx/releases/download/v4.2.1/upx-4.2.1-src.tar.xz
+          wget https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug   CC="gcc -static" CXX="g++ -static"
