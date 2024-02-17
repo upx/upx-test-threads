@@ -12,6 +12,8 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
+  UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
+  UPX_CONFIG_EXPECT_THREADS: 'ON'
 
 jobs:
   job-runtime-checkers: # uses cmake + make
@@ -20,16 +22,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # latest Alpine + edge
+          # latest + edge
           - { container: 'alpine:3.19',      release: debug,   qemu: 'qemu-x86_64 -cpu Nehalem' }
           - { container: 'alpine:3.19',      release: release, qemu: 'qemu-x86_64 -cpu Nehalem' }
           - { container: 'alpine:edge',      release: debug,   qemu: 'qemu-x86_64 -cpu Nehalem' }
           - { container: 'alpine:edge',      release: release, qemu: 'qemu-x86_64 -cpu Nehalem' }
-          # latest Alpine + edge
+          # latest + edge
           - { container: 'i386/alpine:3.19', release: debug,   qemu: 'qemu-i386' }
           - { container: 'i386/alpine:3.19', release: release, qemu: 'qemu-i386' }
-          - { container: 'i386/alpine:edge', release: debug,   qemu: 'qemu-i386' }
-          - { container: 'i386/alpine:edge', release: release, qemu: 'qemu-i386' }
+          - { container: 'i386/alpine:edge', release: debug }   # qemu-i386 currently BROKEN
+          - { container: 'i386/alpine:edge', release: release } # qemu-i386 currently BROKEN
     name: ${{ format('{0} {1}', matrix.container, matrix.release) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -59,6 +61,8 @@ jobs:
           # unfortunately ASAN does not support static linking
           flags="-fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=undefined -fno-omit-frame-pointer"
           export CC="clang $flags" CXX="clang++ $flags"
+          # info: zstd is not clean w.r.t. undefined pointer-compare/pointer-subtract
+          export UPX_CONFIG_EXTRA_COMPILE_OPTIONS_ZSTD="-fno-sanitize=pointer-compare -fno-sanitize=pointer-subtract"
           make UPX_XTARGET=clang-asan xtarget/$release
       - name: 'Build clang-msan'
         if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: MSAN not supported
@@ -91,6 +95,10 @@ jobs:
       - name: 'Run ctest tests clang-msan'
         if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: MSAN not supported
         run: 'make -C build/xtarget/clang-msan/$release test'
+
+      # TODO later?
+      # name: 'Mimic ctest tests clang-static - QEMU'
+      # name: 'Mimic ctest tests clang-static - Valgrind'
 
       - name: 'Run testsuite clang-asan'
         if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: ASAN not supported
