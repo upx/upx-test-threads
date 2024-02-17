@@ -9,6 +9,8 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
+  UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
+  UPX_CONFIG_EXPECT_THREADS: 'ON'
 
 jobs:
   job-analyze-clang-tidy: # uses cmake + make
@@ -17,12 +19,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - container: 'alpine:3.18'
-          - container: 'alpine:3.19'
-          - container: 'alpine:edge'
-          - container: 'i386/alpine:3.18'
-          - container: 'i386/alpine:3.19'
-          - container: 'i386/alpine:edge'
+          - container: 'alpine:3.17'          # clang-15
+          - container: 'alpine:3.18'          # clang-16
+          - container: 'alpine:3.19'          # clang-17
+          - container: 'alpine:edge'          # clang-17
+          - container: 'i386/alpine:3.17'     # clang-15
+          - container: 'i386/alpine:3.18'     # clang-16
+          - container: 'i386/alpine:3.19'     # clang-17
+          - container: 'i386/alpine:edge'     # clang-17
     name: ${{ format('Analyze clang-tidy {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
