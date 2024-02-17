@@ -12,44 +12,46 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
+  UPX_CMAKE_BUILD_FLAGS: --verbose
+  UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   # 2024-01-25
   ZIG_DIST_VERSION: 0.12.0-dev.2341+92211135f
 
 jobs:
   job-linux-zigcc: # uses cmake + make
     if: github.repository_owner == 'upx'
+    name: ${{ format('zigcc {0} {1}', matrix.zig_target, matrix.zig_pic) }}
+    runs-on: ubuntu-latest
+    container: 'alpine:3.19'
     strategy:
       fail-fast: false
       matrix:
         include:
-          # zig BUG: -fPIE is currently broken
-          - { zig_target: aarch64-linux-musl }
-          # { zig_target: aarch64-linux-musl, zig_pic: -fPIE }
+          - { zig_target: aarch64-linux-musl, qemu: qemu-aarch64 }
+          - { zig_target: aarch64-linux-musl, qemu: qemu-aarch64, zig_pic: -fPIE }
           - { zig_target: aarch64-macos-none }
           - { zig_target: aarch64-macos.11.0-none }
           - { zig_target: aarch64-macos.12.0-none }
           - { zig_target: aarch64-macos.13.0-none }
           - { zig_target: aarch64-windows-gnu }
-          - { zig_target: arm-linux-musleabihf }
-          # { zig_target: arm-linux-musleabihf, zig_pic: -fPIE }
-          - { zig_target: i386-linux-musl }
-          # { zig_target: i386-linux-musl, zig_pic: -fPIE }
+          - { zig_target: arm-linux-musleabihf, qemu: qemu-arm }
+          - { zig_target: arm-linux-musleabihf, qemu: qemu-arm, zig_pic: -fPIE }
+          - { zig_target: i386-linux-musl, qemu: qemu-i386 }
+          - { zig_target: i386-linux-musl, qemu: qemu-i386, zig_pic: -fPIE }
           - { zig_target: i386-windows-gnu }
-          - { zig_target: mips-linux-musl }
-          - { zig_target: mipsel-linux-musl }
-          - { zig_target: powerpc-linux-musl }
-          - { zig_target: powerpc64-linux-musl }
-          - { zig_target: powerpc64le-linux-musl }
-          - { zig_target: x86_64-linux-musl }
-          # { zig_target: x86_64-linux-musl, zig_pic: -fPIE }
+          # mips and mipsel: bad hard-float code generation; see https://github.com/upx/upx/issues/788
+          - { zig_target: mips-linux-musl, zig_flags: -msoft-float, qemu: qemu-mips }
+          - { zig_target: mipsel-linux-musl, zig_flags: -msoft-float, qemu: qemu-mipsel }
+          - { zig_target: powerpc-linux-musl, qemu: qemu-ppc }
+          - { zig_target: powerpc64-linux-musl, qemu: qemu-ppc64 }
+          - { zig_target: powerpc64le-linux-musl, qemu: qemu-ppc64le }
+          - { zig_target: x86_64-linux-musl, qemu: qemu-x86_64 }
+          - { zig_target: x86_64-linux-musl, qemu: qemu-x86_64, zig_pic: -fPIE }
           - { zig_target: x86_64-macos-none }
           - { zig_target: x86_64-macos.11.0-none }
           - { zig_target: x86_64-macos.12.0-none }
           - { zig_target: x86_64-macos.13.0-none }
           - { zig_target: x86_64-windows-gnu }
-    name: ${{ format('zigcc {0} {1}', matrix.zig_target, matrix.zig_pic) }}
-    runs-on: ubuntu-latest
-    container: 'alpine:3.19' # older versions such as alpine:3.12 also work; no-container also works
     env:
       ##UPX_CONFIG_EXPECT_THREADS: 'ON'
       # zig is currently missing winpthreads; see https://github.com/ziglang/zig/issues/10989
@@ -130,5 +132,32 @@ jobs:
       - name: 'Run install tests'
         if: ${{ contains(matrix.zig_target, '-linux') }}
         run: |
-          (cd build/zig/${ZIG_TARGET}${ZIG_PIC}/release && DESTDIR=$PWD/Install-with-cmake cmake --install .)
-          (cd build/zig/${ZIG_TARGET}${ZIG_PIC}/release && DESTDIR=$PWD/Install-with-make  make install)
+          (cd build/zig/${ZIG_TARGET}${ZIG_PIC}/release && DESTDIR="$PWD/Install with cmake" cmake --install .)
+          (cd build/zig/${ZIG_TARGET}${ZIG_PIC}/release && DESTDIR="$PWD/Install with make"  make install)
+      - name: 'Run ctest tests'
+        if: ${{ matrix.zig_target == 'i386-linux-musl' || matrix.zig_target == 'x86_64-linux-musl' }}
+        run: |
+          make -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug test
+          make -C build/zig/${ZIG_TARGET}${ZIG_PIC}/release test
+      - name: 'Mimic ctest tests'
+        if: ${{ matrix.zig_target == 'i386-linux-musl' || matrix.zig_target == 'x86_64-linux-musl' }}
+        run: |
+          apk add coreutils
+          env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug   bash "$PWD"/misc/testsuite/mimic_ctest.sh
+          env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/release bash "$PWD"/misc/testsuite/mimic_ctest.sh
+      - name: ${{ format('Mimic ctest tests with QEMU {0}', matrix.qemu) }}
+        if: ${{ matrix.qemu }}
+        run: |
+          qemu="${{ matrix.qemu }}"
+          apk add coreutils $qemu
+          export upx_exe_runner="$qemu"
+          env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug   bash "$PWD"/misc/testsuite/mimic_ctest.sh
+          env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/release bash "$PWD"/misc/testsuite/mimic_ctest.sh
+      - name: 'Mimic ctest tests with Valgrind'
+        if: ${{ matrix.zig_target == 'x86_64-linux-musl' }}
+        run: |
+          apk add coreutils valgrind
+          export upx_exe_runner="valgrind --leak-check=no --error-exitcode=1 --quiet --gen-suppressions=all"
+          upx_exe_runner="$upx_exe_runner --suppressions=$PWD/misc/valgrind/musl.supp"
+          env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug   bash "$PWD"/misc/testsuite/mimic_ctest.sh
+          env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/release bash "$PWD"/misc/testsuite/mimic_ctest.sh
