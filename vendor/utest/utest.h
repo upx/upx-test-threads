@@ -197,6 +197,8 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
 
 #elif defined(__APPLE__)
 #include <time.h>
+#elif !defined(__EMSCRIPTEN__)
+#include <time.h>
 #endif
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
@@ -268,7 +270,9 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
 #endif
 #endif
 
+#ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS 1
+#endif
 
 #if defined(__clang__)
 #if __has_warning("-Wreserved-id-macro")
@@ -358,6 +362,8 @@ static UTEST_INLINE utest_int64_t utest_ns(void) {
   return UTEST_CAST(utest_int64_t, clock_gettime_nsec_np(CLOCK_UPTIME_RAW));
 #elif __EMSCRIPTEN__
   return emscripten_performance_now() * 1000000.0;
+#elif defined(CLOCKS_PER_SEC)
+  return UTEST_CAST(utest_int64_t, clock()) * 1000000000 / CLOCKS_PER_SEC;
 #else
 #error Unsupported platform!
 #endif
