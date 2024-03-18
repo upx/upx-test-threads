@@ -131,6 +131,9 @@ rel_top_srcdir=.
 echo "#===== build UPX ====="
 run "+" cd "build/by-hand" || exit 1
 rel_top_srcdir=../..
+for f in "$rel_top_srcdir"/src/*/*.c; do
+    run "CC  $f"     $CC  -I"$rel_top_srcdir"/vendor $upx_submodule_defs -c "$f"
+done
 for f in "$rel_top_srcdir"/src/*.cpp "$rel_top_srcdir"/src/*/*.cpp; do
     run "CXX $f"     $CXX -I"$rel_top_srcdir"/vendor $upx_submodule_defs -c "$f"
 done

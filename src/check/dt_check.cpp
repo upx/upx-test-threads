@@ -38,6 +38,7 @@
 // HINT: set "UPX_DEBUG_DOCTEST_DISABLE=1" for improved debugging experience
 **************************************************************************/
 
+extern "C" int upx_utest_check(void);
 int upx_doctest_check(int argc, char **argv) {
 #if defined(DOCTEST_CONFIG_DISABLE)
     UNUSED(argc);
@@ -83,6 +84,8 @@ int upx_doctest_check(int argc, char **argv) {
         return 1;
     if (context.shouldExit())
         return 2;
+    if (upx_utest_check() != 0)
+        return 1;
     return 0;
 #endif // DOCTEST_CONFIG_DISABLE
 }
