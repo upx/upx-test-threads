@@ -21,14 +21,24 @@ jobs:
     steps:
       - name: 'Install packages'
         run: |
-          apk update && apk upgrade && apk add bash git perl yq
+          apk update && apk upgrade && apk add bash git gojq perl yq
+          apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing ytt
           git config --global --add safe.directory '*'
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
-      - name: 'Misc checks'
+      - run: bash ./misc/scripts/check_whitespace_git.sh
+      - name: 'YAML checks'
         run: |
-          cat ./.github/*.yml | yq > /dev/null
-          cat ./.github/*/*.yml | yq > /dev/null
-          bash ./misc/scripts/check_whitespace_git.sh
+          for f in .clang-format .clang-tidy .clangd $(find . -type f -iname '*.yml' | LC_ALL=C sort); do
+            echo "===== checking file"
+            echo "  gojq $f"
+            gojq --yaml-input < "$f" > /dev/null
+            echo "  yq   $f"
+            yq < "$f" > /dev/null
+            if command -v ytt > /dev/null; then
+              echo "  ytt  $f"
+              ytt -f- < "$f" > /dev/null
+            fi
+          done
           echo "All done."
 
   BS1: # uses cmake + make
@@ -47,11 +57,12 @@ jobs:
           - '-DWITH_XSPAN=1'
           - '-DWITH_XSPAN=2'
           - '-DDOCTEST_CONFIG_DISABLE'
+          - '-DUPX_CONFIG_USE_STABLE_SORT'
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
-        run: 'apk update && apk upgrade && apk add clang cmake g++ git make'
+        run: 'apk update && apk upgrade && apk add clang cmake file g++ git make'
       - name: ${{ format('Check out {0} source code', github.ref_name) }}
         run: |
           # this seems to be needed when running in a container (beause of UID mismatch??)
@@ -71,6 +82,11 @@ jobs:
       - name: 'Build and test Release'
         if: success() || failure() # run this step even if the previous step failed
         run: 'echo -e "CC=$CC;\nCXX=$CXX;" && make build/release && ctest --test-dir build/release'
+      - name: Show summary
+        run: |
+          ls -l build/*/upx
+          size build/*/upx
+          file build/*/upx
 
   BS2: # uses cmake + make
     if: github.repository_owner == 'upx'
@@ -89,7 +105,7 @@ jobs:
     container: ${{ matrix.container }}
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
-        run: 'apk update && apk upgrade && apk add clang cmake g++ git make'
+        run: 'apk update && apk upgrade && apk add clang cmake file g++ git make'
       - name: ${{ format('Check out {0} source code', github.ref_name) }}
         run: |
           # this seems to be needed when running in a container (beause of UID mismatch??)
@@ -111,3 +127,51 @@ jobs:
       - name: 'Build and test Release'
         if: success() || failure() # run this step even if the previous step failed
         run: 'echo -e "CC=$CC;\nCXX=$CXX;" && make build/release && ctest --test-dir build/release'
+      - name: Show summary
+        run: |
+          ls -l build/*/upx
+          size build/*/upx
+          file build/*/upx
+
+  BS3: # uses cmake + make
+    if: github.repository_owner == 'upx'
+    strategy:
+      fail-fast: false
+      matrix:
+        container:
+          - 'alpine:3.19'
+          - 'alpine:edge'
+          - 'i386/alpine:3.19'
+          - 'i386/alpine:edge'
+        cc:
+          - 'clang'
+          - 'gcc'
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    env:
+      C: ${{ matrix.cc }}
+    steps:
+      - name: ${{ format('Install packages {0}', matrix.container) }}
+        run: 'apk update && apk upgrade && apk add clang cmake file g++ git make'
+      - name: ${{ format('Check out {0} source code', github.ref_name) }}
+        run: |
+          # this seems to be needed when running in a container (beause of UID mismatch??)
+          git config --global --add safe.directory '*'
+          git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
+          git submodule update --init
+      # test misc/make/Makefile-extra.mk
+      - run: 'make build/extra/${C}/all+test'
+      - run: 'make build/extra/${C}-static/all+test'
+      - run: 'make build/extra/${C}-static-lto/all+test'
+      - run: 'make build/extra/${C}-static-pie/all+test'
+      - run: 'make build/extra/${C}-std-cxx20/all+test'
+      - run: 'make build/extra/${C}-std-cxx23/all+test'
+      - run: 'make build/extra/${C}-m32/all+test'
+        if: ${{ startsWith(matrix.container, 'i386/') }}
+      - run: 'make build/extra/${C}-m64/all+test'
+        if: ${{ !startsWith(matrix.container, 'i386/') }}
+      - name: Show summary
+        run: |
+          ls -l build/*/*/*/upx
+          size build/*/*/*/upx
+          file build/*/*/*/upx

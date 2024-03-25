@@ -63,14 +63,14 @@ jobs:
       - name: 'Build cmake Make Debug'
         shell: bash
         run: |
-          make UPX_XTARGET=$xtarget xtarget/debug
+          make UPX_XTARGET=xtarget/$xtarget xtarget/debug
           ls -l build/xtarget/$xtarget/debug/upx.exe
           file  build/xtarget/$xtarget/debug/upx.exe || true
       - name: 'Build cmake Make Release'
         if: success() || failure() # run this step even if the previous step failed
         shell: bash
         run: |
-          make UPX_XTARGET=$xtarget xtarget/release
+          make UPX_XTARGET=xtarget/$xtarget xtarget/release
           ls -l build/xtarget/$xtarget/release/upx.exe
           file  build/xtarget/$xtarget/release/upx.exe || true
       - name: 'Make artifact'
