@@ -122,6 +122,8 @@ jobs:
   # xcode-multi-config (xcodebuild) seems to use "Debug" by default, except for "cmake --install" (BUG?)
   cmake-xcode-multi-config:
     runs-on: macos-12
+    env:
+      UPX_DEBUG_FORCE_PACK_MACOS: 1 # macos-12
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v4
