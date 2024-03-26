@@ -14,8 +14,9 @@ env:
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_BUILD_FLAGS: --verbose
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
-  # 2024-01-25
-  ZIG_DIST_VERSION: 0.12.0-dev.2341+92211135f
+  UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
+  # 2024-03-23
+  ZIG_DIST_VERSION: 0.12.0-dev.3429+13a9d94a8
 
 jobs:
   job-linux-zigcc: # uses cmake + make
@@ -36,8 +37,8 @@ jobs:
           - { zig_target: aarch64-windows-gnu }
           - { zig_target: arm-linux-musleabihf, qemu: qemu-arm }
           - { zig_target: arm-linux-musleabihf, qemu: qemu-arm, zig_pic: -fPIE }
-          - { zig_target: i386-linux-musl, qemu: qemu-i386 }
-          - { zig_target: i386-linux-musl, qemu: qemu-i386, zig_pic: -fPIE }
+          - { zig_target: i386-linux-musl, qemu: qemu-i386 -cpu Conroe }
+          - { zig_target: i386-linux-musl, qemu: qemu-i386 -cpu Conroe, zig_pic: -fPIE }
           - { zig_target: i386-windows-gnu }
           # mips and mipsel: bad hard-float code generation; see https://github.com/upx/upx/issues/788
           - { zig_target: mips-linux-musl, zig_flags: -msoft-float, qemu: qemu-mips }
@@ -103,18 +104,14 @@ jobs:
           ls -la; head zig-ar zig-cc zig-cxx zig-ranlib
       - name: ${{ format('Build Release with zig-cc -target {0} {1}', env.ZIG_TARGET, env.ZIG_PIC) }}
         run: |
-          mkdir -p build/zig/${ZIG_TARGET}${ZIG_PIC}/release
-          cd       build/zig/${ZIG_TARGET}${ZIG_PIC}/release
-          cmake ../../../.. -DCMAKE_BUILD_TYPE=Release -DCMAKE_AR=$HOME/.local/bin/zig-ar -DCMAKE_C_COMPILER=zig-cc -DCMAKE_CXX_COMPILER=zig-cxx -DCMAKE_RANLIB=$HOME/.local/bin/zig-ranlib $EXTRA_CMAKE_CONFIG_FLAGS_RELEASE
-          cmake --build . --config Release --parallel --verbose
-          file ./upx*
+          make UPX_XTARGET=zig/${ZIG_TARGET}${ZIG_PIC} xtarget/release \
+            CC="zig-cc" CXX="zig-cxx" CMAKE_AR="$HOME/.local/bin/zig-ar" CMAKE_RANLIB="$HOME/.local/bin/zig-ranlib"
+          file build/zig/${ZIG_TARGET}${ZIG_PIC}/release/upx*
       - name: ${{ format('Build Debug with zig-cc -target {0} {1}', env.ZIG_TARGET, env.ZIG_PIC) }}
         run: |
-          mkdir -p build/zig/${ZIG_TARGET}${ZIG_PIC}/debug
-          cd       build/zig/${ZIG_TARGET}${ZIG_PIC}/debug
-          cmake ../../../.. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_AR=$HOME/.local/bin/zig-ar -DCMAKE_C_COMPILER=zig-cc -DCMAKE_CXX_COMPILER=zig-cxx -DCMAKE_RANLIB=$HOME/.local/bin/zig-ranlib $EXTRA_CMAKE_CONFIG_FLAGS_DEBUG
-          cmake --build . --config Debug --parallel --verbose
-          file ./upx*
+          make UPX_XTARGET=zig/${ZIG_TARGET}${ZIG_PIC} xtarget/debug \
+           CC="zig-cc" CXX="zig-cxx" CMAKE_AR="$HOME/.local/bin/zig-ar" CMAKE_RANLIB="$HOME/.local/bin/zig-ranlib"
+          file build/zig/${ZIG_TARGET}${ZIG_PIC}/debug/upx*
       - name: ${{ format('Make artifact from upx-{0}-{1}', github.ref_name, env.UPX_GITREV_SHORT) }}
         shell: bash
         run: |
@@ -149,7 +146,7 @@ jobs:
         if: ${{ matrix.qemu }}
         run: |
           qemu="${{ matrix.qemu }}"
-          apk add coreutils $qemu
+          apk add coreutils "${qemu%% *}"
           export upx_exe_runner="$qemu"
           env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug   bash "$PWD"/misc/testsuite/mimic_ctest.sh
           env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/release bash "$PWD"/misc/testsuite/mimic_ctest.sh
