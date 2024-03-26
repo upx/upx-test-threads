@@ -3,6 +3,11 @@
 
 # runs ASAN, MSAN, qemu and valgrind checkers; slow!
 
+# NOTE: it seems that ASAN and MSAN can randomly fail???
+#   Linux updated its ASLR randomization in a way that is incompatible with MSAN/TSAN.
+#   See https://github.com/google/sanitizers/issues/1716
+#   See https://github.com/llvm/llvm-project/issues/85013
+
 name: 'Weekly CI RT - ASAN MSAN Valgrind'
 on:
   schedule: [cron: '00 3 * * 3'] # run weekly Wednesday 03:00 UTC
@@ -22,16 +27,64 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # latest + edge
-          - { container: 'alpine:3.19',      release: debug,   qemu: 'qemu-x86_64 -cpu Nehalem' }
-          - { container: 'alpine:3.19',      release: release, qemu: 'qemu-x86_64 -cpu Nehalem' }
-          - { container: 'alpine:edge',      release: debug,   qemu: 'qemu-x86_64 -cpu Nehalem' }
-          - { container: 'alpine:edge',      release: release, qemu: 'qemu-x86_64 -cpu Nehalem' }
-          # latest + edge
-          - { container: 'i386/alpine:3.19', release: debug,   qemu: 'qemu-i386' }
-          - { container: 'i386/alpine:3.19', release: release, qemu: 'qemu-i386' }
-          - { container: 'i386/alpine:edge', release: debug }   # qemu-i386 currently BROKEN
-          - { container: 'i386/alpine:edge', release: release } # qemu-i386 currently BROKEN
+          - container: 'alpine:3.18'
+            release: debug
+            qemu: 'qemu-x86_64'
+          - container: 'alpine:3.18'
+            release: release
+            qemu: 'qemu-x86_64'
+
+          - container: 'alpine:3.19'
+            release: debug
+            qemu: 'qemu-x86_64'
+          - container: 'alpine:3.19'
+            release: release
+            qemu: 'qemu-x86_64'
+
+          - container: 'alpine:edge'
+            release: debug
+            qemu: 'qemu-x86_64'
+          - container: 'alpine:edge'
+            release: release
+            qemu: 'qemu-x86_64'
+
+          - container: 'i386/alpine:3.18'
+            release: debug
+            qemu: 'qemu-i386'
+            skip_asan: 1 # i386: ASAN not supported
+            skip_msan: 1 # i386: MSAN not supported
+          - container: 'i386/alpine:3.18'
+            release: release
+            qemu: 'qemu-i386'
+            skip_asan: 1 # i386: ASAN not supported
+            skip_msan: 1 # i386: MSAN not supported
+
+          - container: 'i386/alpine:3.19'
+            release: debug
+            qemu: 'qemu-i386'
+            skip_asan: 1 # i386: ASAN not supported
+            skip_msan: 1 # i386: MSAN not supported
+          - container: 'i386/alpine:3.19'
+            release: release
+            qemu: 'qemu-i386'
+            skip_asan: 1 # i386: ASAN not supported
+            skip_msan: 1 # i386: MSAN not supported
+
+          - container: 'i386/alpine:edge'
+            release: debug
+            qemu: 'qemu-i386 -cpu Conroe'
+            skip_asan: 1 # i386: ASAN not supported
+            skip_msan: 1 # i386: MSAN not supported
+            skip_qemu: 1     # qemu-i386 currently BROKEN??
+            skip_valgrind: 1 # and valgrind also currently BROKEN??
+          - container: 'i386/alpine:edge'
+            release: release
+            qemu: 'qemu-i386 -cpu Conroe'
+            skip_asan: 1 # i386: ASAN not supported
+            skip_msan: 1 # i386: MSAN not supported
+            skip_qemu: 1     # qemu-i386 currently BROKEN??
+            skip_valgrind: 1 # and valgrind also currently BROKEN??
+
     name: ${{ format('{0} {1}', matrix.container, matrix.release) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -40,6 +93,7 @@ jobs:
     steps:
       - name: ${{ format('Install packages {0} {1}', matrix.container, matrix.release) }}
         run: |
+          uname -a; pwd; id; umask
           apk update && apk upgrade
           apk add bash clang cmake compiler-rt coreutils g++ git make qemu-i386 qemu-x86_64 tar valgrind
           # this seems to be needed when running in a container (beause of UID mismatch??)
@@ -54,23 +108,28 @@ jobs:
         run: |
           flags="-static -fno-omit-frame-pointer"
           export CC="clang $flags" CXX="clang++ $flags"
-          make UPX_XTARGET=clang-static xtarget/$release
+          make UPX_XTARGET=xtarget/clang-static xtarget/$release
+      - name: 'Build clang-static-pie'
+        run: |
+          flags="-static-pie -fPIE -fno-omit-frame-pointer -Wno-unused-command-line-argument"
+          export CC="clang $flags" CXX="clang++ $flags"
+          make UPX_XTARGET=xtarget/clang-static-pie xtarget/$release
       - name: 'Build clang-asan'
-        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: ASAN not supported
+        if: ${{ !matrix.skip_asan }}
         run: |
           # unfortunately ASAN does not support static linking
-          flags="-fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=undefined -fno-omit-frame-pointer"
+          flags="-fPIE -fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=undefined -fno-omit-frame-pointer"
           export CC="clang $flags" CXX="clang++ $flags"
           # info: zstd is not clean w.r.t. undefined pointer-compare/pointer-subtract
           export UPX_CONFIG_EXTRA_COMPILE_OPTIONS_ZSTD="-fno-sanitize=pointer-compare -fno-sanitize=pointer-subtract"
-          make UPX_XTARGET=clang-asan xtarget/$release
+          make UPX_XTARGET=xtarget/clang-asan xtarget/$release
       - name: 'Build clang-msan'
-        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: MSAN not supported
+        if: ${{ !matrix.skip_msan }}
         run: |
           # unfortunately MSAN does not support static linking
-          flags="-fsanitize=memory -fsanitize=undefined -fno-omit-frame-pointer -DDOCTEST_CONFIG_DISABLE=1"
+          flags="-fPIE -fsanitize=memory -fsanitize=undefined -fno-omit-frame-pointer -DDOCTEST_CONFIG_DISABLE=1"
           export CC="clang $flags" CXX="clang++ $flags"
-          make UPX_XTARGET=clang-msan xtarget/$release
+          make UPX_XTARGET=xtarget/clang-msan xtarget/$release
 
       - name: 'Make artifact'
         run: |
@@ -89,33 +148,55 @@ jobs:
 
       - name: 'Run ctest tests clang-static'
         run: 'make -C build/xtarget/clang-static/$release test'
+      - name: 'Run ctest tests clang-static-pie'
+        run: 'make -C build/xtarget/clang-static-pie/$release test'
       - name: 'Run ctest tests clang-asan'
-        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: ASAN not supported
+        if: ${{ !matrix.skip_asan }}
         run: 'make -C build/xtarget/clang-asan/$release test'
       - name: 'Run ctest tests clang-msan'
-        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: MSAN not supported
+        if: ${{ !matrix.skip_msan }}
         run: 'make -C build/xtarget/clang-msan/$release test'
 
-      # TODO later?
-      # name: 'Mimic ctest tests clang-static - QEMU'
-      # name: 'Mimic ctest tests clang-static - Valgrind'
+      - name: 'Mimic ctest tests clang-static - QEMU'
+        if: ${{ !matrix.skip_qemu && matrix.qemu }}
+        run: |
+          export upx_exe_runner="${{ matrix.qemu }}"
+          env -C build/xtarget/clang-static/$release "$PWD"/misc/testsuite/mimic_ctest.sh
+      - name: 'Mimic ctest tests clang-static-pie - QEMU'
+        if: ${{ !matrix.skip_qemu && matrix.qemu }}
+        run: |
+          export upx_exe_runner="${{ matrix.qemu }}"
+          env -C build/xtarget/clang-static-pie/$release "$PWD"/misc/testsuite/mimic_ctest.sh
+
+      - name: 'Mimic ctest tests clang-static - Valgrind'
+        if: ${{ !matrix.skip_valgrind }}
+        run: |
+          export upx_exe_runner="valgrind --error-exitcode=1 --quiet --gen-suppressions=all"
+          upx_exe_runner="$upx_exe_runner --suppressions=$PWD/misc/valgrind/musl.supp"
+          env -C build/xtarget/clang-static/$release "$PWD"/misc/testsuite/mimic_ctest.sh
+      - name: 'Mimic ctest tests clang-static-pie - Valgrind'
+        if: ${{ !matrix.skip_valgrind }}
+        run: |
+          export upx_exe_runner="valgrind --error-exitcode=1 --quiet --gen-suppressions=all"
+          upx_exe_runner="$upx_exe_runner --suppressions=$PWD/misc/valgrind/musl.supp"
+          env -C build/xtarget/clang-static-pie/$release "$PWD"/misc/testsuite/mimic_ctest.sh
 
       - name: 'Run testsuite clang-asan'
-        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: ASAN not supported
+        if: ${{ !matrix.skip_asan }}
         run: |
           export ASAN_OPTIONS="detect_invalid_pointer_pairs=2"
           env -C build/xtarget/clang-asan/$release "$PWD"/misc/testsuite/upx_testsuite_1.sh
       - name: 'Run testsuite clang-msan'
-        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: MSAN not supported
+        if: ${{ !matrix.skip_msan }}
         run: |
           env -C build/xtarget/clang-msan/$release "$PWD"/misc/testsuite/upx_testsuite_1.sh
       - name: 'Run testsuite clang-static - QEMU'
-        if: ${{ matrix.qemu }}
+        if: ${{ !matrix.skip_qemu && matrix.qemu }}
         run: |
           export upx_exe_runner="${{ matrix.qemu }}"
           env -C build/xtarget/clang-static/$release "$PWD"/misc/testsuite/upx_testsuite_1.sh
       - name: 'Run testsuite clang-static - Valgrind'
-        if: true # very slow
+        if: ${{ !matrix.skip_valgrind && true }} # very slow
         run: |
           export upx_exe_runner="valgrind --error-exitcode=1 --quiet --gen-suppressions=all"
           upx_exe_runner="$upx_exe_runner --suppressions=$PWD/misc/valgrind/musl.supp"
