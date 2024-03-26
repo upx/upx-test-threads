@@ -10,6 +10,7 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
+  UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_CONFIG_EXPECT_THREADS: 'ON'
 
 jobs:
@@ -21,15 +22,23 @@ jobs:
         include:
           - { os: macos-11, run_test: true }
           - { os: macos-12, run_test: true }
-          - { os: macos-13, run_test: false } # TODO: enable once UPX fully works on macos-13
-          - { os: macos-14, run_test: false } # TODO: enable once UPX fully works on macos-14
+          - { os: macos-13, run_test: true }
+          - { os: macos-14, run_test: true }
     name: ${{ format('{0} cmake Xcode', matrix.os) }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v4
         with: { submodules: true }
-      - { name: 'Config cmake Xcode',        run: 'cmake -S . -B build/xcode -G Xcode' }
+      - name: 'Set vars'
+        run: |
+          case "${{ matrix.os }}" in
+            macos-11 | macos-12) echo "UPX_DEBUG_FORCE_PACK_MACOS=1" >> $GITHUB_ENV ;;
+            # FIXME: UPX on macos-13+ is broken => disable self-test for now
+            macos-13 | macos-14) echo "UPX_CONFIG_DISABLE_SELF_PACK_TEST=ON" >> $GITHUB_ENV ;;
+          esac
+      # { name: 'Config cmake Xcode',        run: 'cmake -S . -B build/xcode -G Xcode -DUPX_CONFIG_DISABLE_SELF_PACK_TEST=${UPX_CONFIG_DISABLE_SELF_PACK_TEST}' }
+      - { name: 'Config cmake Xcode',        run: 'bash -x ./misc/scripts/run_cmake_config.sh -S . -B build/xcode -G Xcode'}
       - { name: 'Build cmake Xcode default', run: 'cmake --build build/xcode --parallel --verbose' }
       - { name: 'Build cmake Xcode Debug',   run: 'cmake --build build/xcode --parallel --verbose --config Debug' }
       - { name: 'Build cmake Xcode Release', run: 'cmake --build build/xcode --parallel --verbose --config Release' }
@@ -50,7 +59,7 @@ jobs:
         if: ${{ matrix.run_test }}
         run: |
           ctest --test-dir build/xcode -C Debug
-          #ctest --test-dir build/xcode -C Release
+          ctest --test-dir build/xcode -C Release
           ./build/xcode/Debug/upx --sysinfo -v
           ./build/xcode/Release/upx --sysinfo -v
       - name: 'Run install tests'
