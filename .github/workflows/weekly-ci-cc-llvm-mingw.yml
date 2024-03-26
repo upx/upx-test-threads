@@ -14,6 +14,7 @@ env:
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_CONFIG_EXPECT_THREADS: 'ON'
+  UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
 
 jobs:
   job-llvm-mingw: # uses cmake + make
@@ -34,12 +35,12 @@ jobs:
           - name: llvm-mingw-20231128-ucrt
             llvm_version: 17.0.6
             url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20231128/llvm-mingw-20231128-ucrt-ubuntu-20.04-x86_64.tar.xz'
-          - name: llvm-mingw-20240207-msvcrt
-            llvm_version: 18.1.0rc2
-            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240207/llvm-mingw-20240207-msvcrt-ubuntu-20.04-x86_64.tar.xz'
-          - name: llvm-mingw-20240207-ucrt
-            llvm_version: 18.1.0rc2
-            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240207/llvm-mingw-20240207-ucrt-ubuntu-20.04-x86_64.tar.xz'
+          - name: llvm-mingw-20240320-msvcrt
+            llvm_version: 18.1.2
+            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240320/llvm-mingw-20240320-msvcrt-ubuntu-20.04-x86_64.tar.xz'
+          - name: llvm-mingw-20240320-ucrt
+            llvm_version: 18.1.2
+            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240320/llvm-mingw-20240320-ucrt-ubuntu-20.04-x86_64.tar.xz'
     name: ${{ format('{0} {1}', matrix.name, matrix.llvm_version) }}
     runs-on: ubuntu-latest
     steps:
@@ -62,28 +63,28 @@ jobs:
           export CC="aarch64-w64-mingw32-clang -static" CXX="aarch64-w64-mingw32-clang++ -static"
           CC="$CC -D_WIN32_WINNT=0x0400"; CXX="$CXX -D_WIN32_WINNT=0x0400"
           export CMAKE_SYSTEM_NAME=Windows
-          make UPX_XTARGET=aarch64-w64-mingw32-clang xtarget/debug xtarget/release
+          make UPX_XTARGET=llvm-mingw/aarch64-w64-mingw32-clang xtarget/debug xtarget/release
       - name: 'Build clang armv7'
         if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="armv7-w64-mingw32-clang -static" CXX="armv7-w64-mingw32-clang++ -static"
           CC="$CC -D_WIN32_WINNT=0x0400"; CXX="$CXX -D_WIN32_WINNT=0x0400"
           export CMAKE_SYSTEM_NAME=Windows
-          make UPX_XTARGET=armv7-w64-mingw32-clang xtarget/debug xtarget/release
+          make UPX_XTARGET=llvm-mingw/armv7-w64-mingw32-clang xtarget/debug xtarget/release
       - name: 'Build clang i686'
         if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="i686-w64-mingw32-clang -static" CXX="i686-w64-mingw32-clang++ -static"
           CC="$CC -D_WIN32_WINNT=0x0400"; CXX="$CXX -D_WIN32_WINNT=0x0400"
           export CMAKE_SYSTEM_NAME=Windows CMAKE_CROSSCOMPILING_EMULATOR=wine
-          make UPX_XTARGET=i686-w64-mingw32-clang xtarget/debug xtarget/release
+          make UPX_XTARGET=llvm-mingw/i686-w64-mingw32-clang xtarget/debug xtarget/release
       - name: 'Build clang x86_64'
         if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="x86_64-w64-mingw32-clang -static" CXX="x86_64-w64-mingw32-clang++ -static"
           CC="$CC -D_WIN32_WINNT=0x0400"; CXX="$CXX -D_WIN32_WINNT=0x0400"
           export CMAKE_SYSTEM_NAME=Windows CMAKE_CROSSCOMPILING_EMULATOR=wine64
-          make UPX_XTARGET=x86_64-w64-mingw32-clang xtarget/debug xtarget/release
+          make UPX_XTARGET=llvm-mingw/x86_64-w64-mingw32-clang xtarget/debug xtarget/release
       - name: 'Make artifact'
         run: |
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-${{ matrix.name }}-${{ matrix.llvm_version }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
