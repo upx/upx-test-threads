@@ -20,16 +20,16 @@ jobs:
       matrix:
         include:
           # clang-cl
-          - { os: windows-2019, vsversion: 2019, arch: amd64, clang_cl: true }
-          - { os: windows-2022, vsversion: 2022, arch: amd64, clang_cl: true }
+          - { os: windows-2019, vsversion: 2019, vsarch: amd64, clang_cl: true }
+          - { os: windows-2022, vsversion: 2022, vsarch: amd64, clang_cl: true }
           # msvc
-          - { os: windows-2019, vsversion: 2019, arch: amd64 }
-          - { os: windows-2019, vsversion: 2019, arch: amd64_arm64 }
-          - { os: windows-2019, vsversion: 2019, arch: amd64_x86 }
-          - { os: windows-2022, vsversion: 2022, arch: amd64 }
-          - { os: windows-2022, vsversion: 2022, arch: amd64_arm64 }
-          - { os: windows-2022, vsversion: 2022, arch: amd64_x86 }
-    name: ${{ format('vs{0} {1} {2}', matrix.vsversion, matrix.arch, matrix.clang_cl && 'clang-cl' || '') }}
+          - { os: windows-2019, vsversion: 2019, vsarch: amd64 }
+          - { os: windows-2019, vsversion: 2019, vsarch: amd64_arm64 }
+          - { os: windows-2019, vsversion: 2019, vsarch: amd64_x86 }
+          - { os: windows-2022, vsversion: 2022, vsarch: amd64 }
+          - { os: windows-2022, vsversion: 2022, vsarch: amd64_arm64 }
+          - { os: windows-2022, vsversion: 2022, vsarch: amd64_x86 }
+    name: ${{ format('vs{0} {1} {2}', matrix.vsversion, matrix.vsarch, matrix.clang_cl && 'clang-cl' || '') }}
     runs-on: ${{ matrix.os }}
     steps:
       - run: git config --global core.autocrlf false
@@ -40,7 +40,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           vsversion: ${{ matrix.vsversion }}
-          arch: ${{ matrix.arch }}
+          arch: ${{ matrix.vsarch }}
       - name: 'Build cmake NMake Debug'
         shell: cmd
         run: |
@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           X="${{ matrix.clang_cl && '-clang-cl' || '' }}"
-          N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-nmake-vs${{ matrix.vsversion }}-${{ matrix.arch }}$X" | sed 's/[^0-9a-zA-Z_.-]/-/g')
+          N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-nmake-vs${{ matrix.vsversion }}-${{ matrix.vsarch }}$X" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
           (cd build && cp -ai --parents */upx.exe "../tmp/artifact/$N")
           # GitHub Actions magic: set "artifact_name" environment value for use in next step
@@ -73,12 +73,12 @@ jobs:
           name: ${{ env.artifact_name }}
           path: tmp/artifact
       - name: 'Run ctest tests'
-        if: ${{ matrix.arch != 'amd64_arm64' }}
+        if: ${{ matrix.vsarch != 'amd64_arm64' }}
         run: |
-          ctest --test-dir build/debug
-          ctest --test-dir build/release
           .\build\debug\upx.exe --sysinfo -v
           .\build\release\upx.exe --sysinfo -v
+          ctest --test-dir build/debug
+          ctest --test-dir build/release
       - name: 'Run install tests'
         run: |
           env DESTDIR=./Install-debug   cmake --install build/debug

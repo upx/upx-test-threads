@@ -22,25 +22,25 @@ jobs:
       matrix:
         include:
           # cl (MSVC)
-          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, arch: amd64 }
-          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, arch: amd64_arm64 }
-          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, arch: amd64_x86 }
-          - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, arch: amd64 }
-          - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, arch: amd64_arm64 }
-          - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, arch: amd64_x86 }
+          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64 }
+          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64_arm64 }
+          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64_x86 }
+          - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64 }
+          - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64_arm64 }
+          - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64_x86 }
           # clang-cl
-          - { os: windows-2019, cc: clang-cl, cxx: clang-cl, vsversion: 2019, arch: amd64 }
-          - { os: windows-2022, cc: clang-cl, cxx: clang-cl, vsversion: 2022, arch: amd64 }
+          - { os: windows-2019, cc: clang-cl, cxx: clang-cl, vsversion: 2019, vsarch: amd64 }
+          - { os: windows-2022, cc: clang-cl, cxx: clang-cl, vsversion: 2022, vsarch: amd64 }
           # clang
-          - { os: windows-2019, cc: clang, cxx: 'clang++', arch: amd64, xflags: '-static' }
-          - { os: windows-2022, cc: clang, cxx: 'clang++', arch: amd64, xflags: '-static' }
+          - { os: windows-2019, cc: clang, cxx: 'clang++', vsarch: amd64, xflags: '-static' }
+          - { os: windows-2022, cc: clang, cxx: 'clang++', vsarch: amd64, xflags: '-static' }
           # gcc (mingw-gcc)
-          - { os: windows-2019, cc: gcc, cxx: 'g++', arch: amd64, xflags: '-static' }
-          - { os: windows-2022, cc: gcc, cxx: 'g++', arch: amd64, xflags: '-static' }
+          - { os: windows-2019, cc: gcc, cxx: 'g++', vsarch: amd64, xflags: '-static' }
+          - { os: windows-2022, cc: gcc, cxx: 'g++', vsarch: amd64, xflags: '-static' }
     env:
       CC: ${{ matrix.cc }} ${{ matrix.xflags }}
       CXX: ${{ matrix.cxx }} ${{ matrix.xflags }}
-    name: ${{ format('{0} {1} {2} {3}', matrix.cc, matrix.vsversion, matrix.arch, matrix.os) }}
+    name: ${{ format('{0} {1} {2} {3}', matrix.cc, matrix.vsversion, matrix.vsarch, matrix.os) }}
     runs-on: ${{ matrix.os }}
     steps:
       - run: git config --global core.autocrlf false
@@ -52,12 +52,12 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           vsversion: ${{ matrix.vsversion }}
-          arch: ${{ matrix.arch }}
+          arch: ${{ matrix.vsarch }}
       - name: 'Init environment'
         shell: bash
         run: |
           command -v ninja >/dev/null || choco install -y --no-progress ninja
-          xtarget="${{ matrix.os }}-ninja-${{ matrix.cc }}-${{ matrix.vsversion }}-${{ matrix.arch}}"
+          xtarget="${{ matrix.os }}-ninja-${{ matrix.cc }}-${{ matrix.vsversion }}-${{ matrix.vsarch}}"
           echo "xtarget=$xtarget" >> $GITHUB_ENV
       - name: 'Build cmake Ninja Debug'
         shell: bash
@@ -86,13 +86,13 @@ jobs:
           name: ${{ env.artifact_name }}
           path: tmp/artifact
       - name: 'Run ctest tests'
-        if: ${{ matrix.arch != 'amd64_arm64' }}
+        if: ${{ matrix.vsarch != 'amd64_arm64' }}
         shell: bash
         run: |
-          ctest --test-dir build/xtarget/$xtarget/debug
-          ctest --test-dir build/xtarget/$xtarget/release
           ./build/xtarget/$xtarget/debug/upx.exe --sysinfo -v
           ./build/xtarget/$xtarget/release/upx.exe --sysinfo -v
+          ctest --test-dir build/xtarget/$xtarget/debug
+          ctest --test-dir build/xtarget/$xtarget/release
       - name: 'Run install tests'
         shell: bash
         run: |

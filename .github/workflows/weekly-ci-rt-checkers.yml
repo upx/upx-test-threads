@@ -72,18 +72,14 @@ jobs:
 
           - container: 'i386/alpine:edge'
             release: debug
-            qemu: 'qemu-i386 -cpu Conroe'
+            qemu: 'qemu-i386'
             skip_asan: 1 # i386: ASAN not supported
             skip_msan: 1 # i386: MSAN not supported
-            skip_qemu: 1     # qemu-i386 currently BROKEN??
-            skip_valgrind: 1 # and valgrind also currently BROKEN??
           - container: 'i386/alpine:edge'
             release: release
-            qemu: 'qemu-i386 -cpu Conroe'
+            qemu: 'qemu-i386'
             skip_asan: 1 # i386: ASAN not supported
             skip_msan: 1 # i386: MSAN not supported
-            skip_qemu: 1     # qemu-i386 currently BROKEN??
-            skip_valgrind: 1 # and valgrind also currently BROKEN??
 
     name: ${{ format('{0} {1}', matrix.container, matrix.release) }}
     runs-on: ubuntu-latest
