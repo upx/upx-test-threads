@@ -207,16 +207,16 @@ jobs:
       matrix:
         include:
           # clang-cl
-          - { os: windows-2019, vsversion: 2019, arch: amd64, clang_cl: true }
-          - { os: windows-2022, vsversion: 2022, arch: amd64, clang_cl: true }
+          - { os: windows-2019, vsversion: 2019, vsarch: amd64, clang_cl: true }
+          - { os: windows-2022, vsversion: 2022, vsarch: amd64, clang_cl: true }
           # msvc
-          - { os: windows-2019, vsversion: 2019, arch: amd64 }
-          - { os: windows-2019, vsversion: 2019, arch: amd64_arm64 }
-          - { os: windows-2019, vsversion: 2019, arch: amd64_x86 }
-          - { os: windows-2022, vsversion: 2022, arch: amd64 }
-          - { os: windows-2022, vsversion: 2022, arch: amd64_arm64 }
-          - { os: windows-2022, vsversion: 2022, arch: amd64_x86 }
-    name: ${{ format('by-hand vs{0} {1} {2}', matrix.vsversion, matrix.arch, matrix.clang_cl && 'clang-cl' || '') }}
+          - { os: windows-2019, vsversion: 2019, vsarch: amd64 }
+          - { os: windows-2019, vsversion: 2019, vsarch: amd64_arm64 }
+          - { os: windows-2019, vsversion: 2019, vsarch: amd64_x86 }
+          - { os: windows-2022, vsversion: 2022, vsarch: amd64 }
+          - { os: windows-2022, vsversion: 2022, vsarch: amd64_arm64 }
+          - { os: windows-2022, vsversion: 2022, vsarch: amd64_x86 }
+    name: ${{ format('by-hand vs{0} {1} {2}', matrix.vsversion, matrix.vsarch, matrix.clang_cl && 'clang-cl' || '') }}
     runs-on: ${{ matrix.os }}
     steps:
       - run: git config --global core.autocrlf false
@@ -229,7 +229,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           vsversion: ${{ matrix.vsversion }}
-          arch: ${{ matrix.arch }}
+          arch: ${{ matrix.vsarch }}
       - name: 'Build by-hand with bash'
         shell: bash
         run: |
