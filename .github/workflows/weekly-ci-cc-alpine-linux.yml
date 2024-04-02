@@ -22,6 +22,7 @@ env:
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
+  UPX_DEBUG_TEST_LIBC_QSORT: 1
   UPX_TESTSUITE_LEVEL: 4
 
 jobs:
@@ -70,11 +71,6 @@ jobs:
           case ${{ matrix.container }}-${{ matrix.use_lto }} in
             # llvm-dev is needed on Alpine versions <= 3.18 for -flto
             *:3.[0-9]-1 | *:3.1[0-8]-1) apk add llvm-dev ;;
-          esac
-          # work around clang < 9 problem with UBSAN + division by zero; @BUG-clang
-          # (gcc works, but just disable UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO for all compilers)
-          case ${{ matrix.container }} in
-            *:3.[0-9] | *:3.10) echo "UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO=0" >> $GITHUB_ENV ;;
           esac
           # set environment vars
           x="$(apk list -I "$(apk info -Wq "$(which clang)")")"; echo "clang_package=${x%% *}" >> $GITHUB_ENV
@@ -194,8 +190,8 @@ jobs:
         run: |
           for dir in "upx with space"/build/xtarget/*-cxx*/*; do
              echo "===== $dir"
-             make -C "$dir" test
              (cd "$dir" && ./upx --sysinfo -v)
+             make -C "$dir" test
           done
 
       - name: 'Run file system test suite (busybox)'
