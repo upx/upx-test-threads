@@ -3,9 +3,14 @@
 
 # build with "zig cc"; see https://ziglang.org/download/
 
-name: 'Weekly CI CC - zigcc'
+# problems with zig on i386 because of limited address space (see "PROBLEM") below:
+#   - cannot link any macos exe: "error: NoSpaceLeft"
+#   - QEMU cannot run the UPX-self-packed arm-linux-musleabihf-fPIE exe:
+#     "Unable to find a guest_base to satisfy all guest address mapping requirements"
+
+name: 'Weekly CI CC - zigcc on i386'
 on:
-  schedule: [cron: '40 2 * * 3'] # run weekly Wednesday 02:40 UTC
+  schedule: [cron: '50 2 * * 3'] # run weekly Wednesday 02:50 UTC
   workflow_dispatch:
 env:
   CMAKE_REQUIRED_QUIET: 'OFF'
@@ -24,20 +29,20 @@ jobs:
     if: github.repository_owner == 'upx'
     name: ${{ format('zigcc {0} {1}', matrix.zig_target, matrix.zig_pic) }}
     runs-on: ubuntu-latest
-    container: 'alpine:edge' # ci.yml uses alpine:3.19, so we test alpine:edge here
+    container: 'i386/alpine:edge' # ci.yml uses alpine:3.19, so we test alpine:edge here
     strategy:
       fail-fast: false
       matrix:
         include:
           - { zig_target: aarch64-linux-musl, qemu: qemu-aarch64 }
           - { zig_target: aarch64-linux-musl, qemu: qemu-aarch64, zig_pic: -fPIE }
-          - { zig_target: aarch64-macos-none }
-          - { zig_target: aarch64-macos.11.0-none }
-          - { zig_target: aarch64-macos.12.0-none }
-          - { zig_target: aarch64-macos.13.0-none }
+          # { zig_target: aarch64-macos-none }
+          # { zig_target: aarch64-macos.11.0-none }
+          # { zig_target: aarch64-macos.12.0-none }
+          # { zig_target: aarch64-macos.13.0-none }
           - { zig_target: aarch64-windows-gnu }
           - { zig_target: arm-linux-musleabihf, qemu: qemu-arm }
-          - { zig_target: arm-linux-musleabihf, qemu: qemu-arm, zig_pic: -fPIE }
+          - { zig_target: arm-linux-musleabihf, NO_qemu: qemu-arm, zig_pic: -fPIE } # qemu PROBLEM
           - { zig_target: i386-linux-gnu.2.3.4, zig_flags: -march=i586 }
           - { zig_target: i386-linux-musl, qemu: qemu-i386 }
           - { zig_target: i386-linux-musl, qemu: qemu-i386, zig_pic: -fPIE }
@@ -53,10 +58,10 @@ jobs:
           - { zig_target: x86_64-linux-gnu.2.3.4 }
           - { zig_target: x86_64-linux-musl, qemu: qemu-x86_64 }
           - { zig_target: x86_64-linux-musl, qemu: qemu-x86_64, zig_pic: -fPIE }
-          - { zig_target: x86_64-macos-none }
-          - { zig_target: x86_64-macos.11.0-none }
-          - { zig_target: x86_64-macos.12.0-none }
-          - { zig_target: x86_64-macos.13.0-none }
+          # { zig_target: x86_64-macos-none }
+          # { zig_target: x86_64-macos.11.0-none }
+          # { zig_target: x86_64-macos.12.0-none }
+          # { zig_target: x86_64-macos.13.0-none }
           - { zig_target: x86_64-windows-gnu }
     env:
       # zig is currently missing winpthreads; see https://github.com/ziglang/zig/issues/10989
@@ -92,7 +97,7 @@ jobs:
           # install zig; note that ~/.local/bin is included in the default $PATH on Ubuntu
           mkdir -p -v ~/.local/bin
           cd ~/.local/bin
-          ZIG_DIST_NAME=zig-linux-x86_64-${ZIG_DIST_VERSION}
+          ZIG_DIST_NAME=zig-linux-x86-${ZIG_DIST_VERSION}
           wget -q https://ziglang.org/builds/${ZIG_DIST_NAME}.tar.xz
           ls -l ${ZIG_DIST_NAME}.tar.xz
           tar -xoJf ${ZIG_DIST_NAME}.tar.xz
@@ -120,13 +125,14 @@ jobs:
       - name: ${{ format('Make artifact from upx-{0}-{1}', github.ref_name, env.UPX_GITREV_SHORT) }}
         shell: bash
         run: |
-          N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-zigcc-${{ matrix.zig_target }}${ZIG_PIC}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
+          N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-zigcc-i386-${{ matrix.zig_target }}${ZIG_PIC}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
           (cd build && shopt -s nullglob && cp -ai --parents */upx{,.exe} */*/*/upx{,.exe} "../tmp/artifact/$N")
           (cd tmp/artifact && tar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
           # GitHub Actions magic: set "artifact_name" environment value for use in next step
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
+        if: false # i386: missing nodejs on host
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifact_name }}
@@ -137,12 +143,12 @@ jobs:
           (cd build/zig/${ZIG_TARGET}${ZIG_PIC}/release && DESTDIR="$PWD/Install with cmake" cmake --install .)
           (cd build/zig/${ZIG_TARGET}${ZIG_PIC}/release && DESTDIR="$PWD/Install with make"  make install)
       - name: 'Run ctest tests'
-        if: ${{ matrix.zig_target == 'i386-linux-musl' || matrix.zig_target == 'x86_64-linux-musl' }}
+        if: ${{ matrix.zig_target == 'i386-linux-musl' }}
         run: |
           make -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug test
           make -C build/zig/${ZIG_TARGET}${ZIG_PIC}/release test
       - name: 'Mimic ctest tests'
-        if: ${{ matrix.zig_target == 'i386-linux-musl' || matrix.zig_target == 'x86_64-linux-musl' }}
+        if: ${{ matrix.zig_target == 'i386-linux-musl' }}
         run: |
           apk add coreutils
           env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug   bash "$PWD"/misc/testsuite/mimic_ctest.sh
@@ -156,7 +162,7 @@ jobs:
           env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug   bash "$PWD"/misc/testsuite/mimic_ctest.sh
           env -C build/zig/${ZIG_TARGET}${ZIG_PIC}/release bash "$PWD"/misc/testsuite/mimic_ctest.sh
       - name: 'Mimic ctest tests with Valgrind'
-        if: ${{ matrix.zig_target == 'x86_64-linux-musl' }}
+        if: ${{ matrix.zig_target == 'i386-linux-musl' }}
         run: |
           apk add coreutils valgrind
           export upx_exe_runner="valgrind --leak-check=no --error-exitcode=1 --quiet --gen-suppressions=all"
