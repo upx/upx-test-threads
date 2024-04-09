@@ -16,15 +16,15 @@ env:
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
-  # 2024-04-01
-  ZIG_DIST_VERSION: 0.12.0-dev.3508+a6ed3e6d2
+  # 2024-04-04
+  ZIG_DIST_VERSION: 0.12.0-dev.3533+e5d900268
 
 jobs:
   job-linux-zigcc: # uses cmake + make
     if: github.repository_owner == 'upx'
     name: ${{ format('zigcc {0} {1}', matrix.zig_target, matrix.zig_pic) }}
     runs-on: ubuntu-latest
-    container: 'alpine:3.19'
+    container: 'alpine:edge' # ci.yml uses alpine:3.19, so we test alpine:edge here
     strategy:
       fail-fast: false
       matrix:
@@ -38,6 +38,7 @@ jobs:
           - { zig_target: aarch64-windows-gnu }
           - { zig_target: arm-linux-musleabihf, qemu: qemu-arm }
           - { zig_target: arm-linux-musleabihf, qemu: qemu-arm, zig_pic: -fPIE }
+          - { zig_target: i386-linux-gnu.2.3.4, zig_flags: -march=i586 }
           - { zig_target: i386-linux-musl, qemu: qemu-i386 }
           - { zig_target: i386-linux-musl, qemu: qemu-i386, zig_pic: -fPIE }
           - { zig_target: i386-windows-gnu }
@@ -48,6 +49,8 @@ jobs:
           # powerpc64: obscure problem with C++ exceptions in UPX doctest checks when *NOT* using -fstack-protector
           - { zig_target: powerpc64-linux-musl, zig_flags: -fstack-protector, qemu: qemu-ppc64 }
           - { zig_target: powerpc64le-linux-musl, qemu: qemu-ppc64le }
+          - { zig_target: powerpc64le-linux-musl, qemu: qemu-ppc64le, zig_pic: -fPIE }
+          - { zig_target: x86_64-linux-gnu.2.3.4 }
           - { zig_target: x86_64-linux-musl, qemu: qemu-x86_64 }
           - { zig_target: x86_64-linux-musl, qemu: qemu-x86_64, zig_pic: -fPIE }
           - { zig_target: x86_64-macos-none }
@@ -74,8 +77,9 @@ jobs:
           # this seems to be needed when running in a container (beause of UID mismatch??)
           git config --global --add safe.directory '*'
       - name: 'Check out code'
-        uses: actions/checkout@v4
-        with: { submodules: true }
+        run: |
+          git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
+          git submodule update --init
       - name: ${{ format('Install Zig {0}', env.ZIG_DIST_VERSION) }}
         shell: bash
         run: |
