@@ -23,13 +23,11 @@ jobs:
       - name: ${{ format('Build clang {0}', matrix.container) }}
         run: |
           apk update && apk upgrade && apk add clang cmake make
-          wget https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-src.tar.xz
+          wget https://github.com/upx/upx/releases/download/v4.2.3/upx-4.2.3-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
-          make    build/debug   CC="clang -static" CXX="clang++ -static"
-          make    build/release CC="clang -static" CXX="clang++ -static"
-          make -C build/debug   test
-          make -C build/release test
+          make    build/debug+test   CC="clang -static" CXX="clang++ -static"
+          make    build/release+test CC="clang -static" CXX="clang++ -static"
           make -C build/release install DESTDIR="$PWD/Install"
           N=$(echo "upx-test-minimal-alpinelinux-clang-static-${{ matrix.container }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           echo "artifact_name=$N" >> $GITHUB_ENV
@@ -50,13 +48,11 @@ jobs:
       - name: ${{ format('Build gcc {0}', matrix.container) }}
         run: |
           apk update && apk upgrade && apk add cmake g++ make
-          wget https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-src.tar.xz
+          wget https://github.com/upx/upx/releases/download/v4.2.3/upx-4.2.3-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
-          make    build/debug   CC="gcc -static" CXX="g++ -static"
-          make    build/release CC="gcc -static" CXX="g++ -static"
-          make -C build/debug   test
-          make -C build/release test
+          make    build/debug+test   CC="gcc -static" CXX="g++ -static"
+          make    build/release+test CC="gcc -static" CXX="g++ -static"
           make -C build/release install DESTDIR="$PWD/Install"
           N=$(echo "upx-test-minimal-alpinelinux-gcc-static-${{ matrix.container }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           echo "artifact_name=$N" >> $GITHUB_ENV

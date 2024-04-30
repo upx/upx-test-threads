@@ -16,8 +16,8 @@ env:
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
-  # 2024-04-04
-  ZIG_DIST_VERSION: 0.12.0-dev.3533+e5d900268
+  # 2024-04-25
+  ZIG_DIST_VERSION: 0.13.0-dev.44+9d64332a5
 
 jobs:
   job-linux-zigcc: # uses cmake + make
@@ -46,8 +46,8 @@ jobs:
           - { zig_target: mips-linux-musl, zig_flags: -msoft-float, qemu: qemu-mips }
           - { zig_target: mipsel-linux-musl, zig_flags: -msoft-float, qemu: qemu-mipsel }
           - { zig_target: powerpc-linux-musl, qemu: qemu-ppc }
-          # powerpc64: obscure problem with C++ exceptions in UPX doctest checks when *NOT* using -fstack-protector
-          - { zig_target: powerpc64-linux-musl, zig_flags: -fstack-protector, qemu: qemu-ppc64 }
+          # powerpc64: obscure problem with C++ exceptions in UPX doctest checks; use -fPIC to work-around
+          - { zig_target: powerpc64-linux-musl, zig_flags: -fPIC, qemu: qemu-ppc64 }
           - { zig_target: powerpc64le-linux-musl, qemu: qemu-ppc64le }
           - { zig_target: powerpc64le-linux-musl, qemu: qemu-ppc64le, zig_pic: -fPIE }
           - { zig_target: x86_64-linux-gnu.2.3.4 }
@@ -139,8 +139,8 @@ jobs:
       - name: 'Run ctest tests'
         if: ${{ matrix.zig_target == 'i386-linux-musl' || matrix.zig_target == 'x86_64-linux-musl' }}
         run: |
-          make -C build/zig/${ZIG_TARGET}${ZIG_PIC}/debug test
-          make -C build/zig/${ZIG_TARGET}${ZIG_PIC}/release test
+          make build/zig/${ZIG_TARGET}${ZIG_PIC}/debug+test
+          make build/zig/${ZIG_TARGET}${ZIG_PIC}/release+test
       - name: 'Mimic ctest tests'
         if: ${{ matrix.zig_target == 'i386-linux-musl' || matrix.zig_target == 'x86_64-linux-musl' }}
         run: |

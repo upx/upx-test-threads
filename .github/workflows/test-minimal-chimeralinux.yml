@@ -24,13 +24,11 @@ jobs:
         run: |
           apk update && apk upgrade && apk add bsdtar clang cmake curl gmake
           for p in make; do ln -s -v ../../bin/g$p /usr/local/bin/$p; done
-          curl -OL https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-src.tar.xz
+          curl -OL https://github.com/upx/upx/releases/download/v4.2.3/upx-4.2.3-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
-          make    build/debug   CC="clang" CXX="clang++"
-          make    build/release CC="clang" CXX="clang++"
-          make -C build/debug   test
-          make -C build/release test
+          make    build/debug+test   CC="clang" CXX="clang++"
+          make    build/release+test CC="clang" CXX="clang++"
           make -C build/release install DESTDIR="$PWD/Install"
           N=$(echo "upx-test-minimal-chimeralinux-clang-${{ matrix.container }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           echo "artifact_name=$N" >> $GITHUB_ENV
@@ -54,13 +52,11 @@ jobs:
           for p in make; do ln -s -v ../../bin/g$p /usr/local/bin/$p; done
           # install devel-static packages
           apk add libatomic-chimera-devel-static libcxx-devel-static musl-devel-static
-          curl -OL https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-src.tar.xz
+          curl -OL https://github.com/upx/upx/releases/download/v4.2.3/upx-4.2.3-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
-          make    build/debug   CC="clang -static" CXX="clang++ -static"
-          make    build/release CC="clang -static" CXX="clang++ -static"
-          make -C build/debug   test
-          make -C build/release test
+          make    build/debug+test   CC="clang -static" CXX="clang++ -static"
+          make    build/release+test CC="clang -static" CXX="clang++ -static"
           make -C build/release install DESTDIR="$PWD/Install"
           N=$(echo "upx-test-minimal-chimeralinux-clang-static-${{ matrix.container }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           echo "artifact_name=$N" >> $GITHUB_ENV
