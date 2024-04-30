@@ -1,7 +1,7 @@
 # Copyright (C) Markus Franz Xaver Johannes Oberhumer
 # BS BuildSystem: build with misc flags
 
-name: 'Weekly CI BS - Misc'
+name: Weekly CI BS - Misc
 on:
   schedule: [cron: '50 1 * * 3'] # run weekly Wednesday 01:50 UTC
   workflow_dispatch:
@@ -16,19 +16,23 @@ env:
   UPX_DEBUG_TEST_LIBC_QSORT: 1
 
 jobs:
+  # test YAML
   BS0:
     if: github.repository_owner == 'upx'
     runs-on: ubuntu-latest
-    container: 'alpine:edge'
+    container: alpine:edge
     steps:
-      - name: 'Install packages'
+      - name: Install packages
         run: |
-          apk update && apk upgrade && apk add bash git gojq perl yq
+          apk update && apk upgrade && apk add bash git gojq perl yq-go
           apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing ytt
+      - name: ${{ format('Check out {0} source code', github.ref_name) }}
+        run: |
           git config --global --add safe.directory '*'
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
+          git submodule update --init
       - run: bash ./misc/scripts/check_whitespace_git.sh
-      - name: 'YAML checks'
+      - name: YAML checks
         run: |
           for f in .clang-format .clang-tidy .clangd $(find . -type f -iname '*.yml' | LC_ALL=C sort); do
             echo "===== checking file"
@@ -43,31 +47,31 @@ jobs:
           done
           echo "All done."
 
+  # test various CPPFLAGS
   BS1: # uses cmake + make
     if: github.repository_owner == 'upx'
     strategy:
       fail-fast: false
       matrix:
         container:
-          - 'alpine:edge'
-          - 'i386/alpine:edge'
+          - alpine:edge
+          - i386/alpine:edge
         cc:
-          - 'clang'
-          - 'gcc'
+          - clang
+          - gcc
         cppflags:
-          - '-DWITH_XSPAN=0'
-          - '-DWITH_XSPAN=1'
-          - '-DWITH_XSPAN=2'
-          - '-DDOCTEST_CONFIG_DISABLE'
-          - '-DUPX_CONFIG_USE_STABLE_SORT'
+          - -DWITH_XSPAN=0
+          - -DWITH_XSPAN=1
+          - -DWITH_XSPAN=2
+          - -DDOCTEST_CONFIG_DISABLE
+          - -DUPX_CONFIG_USE_STABLE_SORT
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
-        run: 'apk update && apk upgrade && apk add clang cmake file g++ git make'
+        run: apk update && apk upgrade && apk add clang cmake file g++ git make
       - name: ${{ format('Check out {0} source code', github.ref_name) }}
         run: |
-          # this seems to be needed when running in a container (beause of UID mismatch??)
           git config --global --add safe.directory '*'
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
           git submodule update --init
@@ -79,38 +83,38 @@ jobs:
             *)     exit 99 ;;
           esac
           echo -e "CC=$CC\nCXX=$CXX" >> $GITHUB_ENV
-      - name: 'Build and test Debug'
-        run: 'echo -e "CC=$CC;\nCXX=$CXX;" && make build/debug && ctest --test-dir build/debug'
-      - name: 'Build and test Release'
+      - name: Build and test Debug
+        run: echo -e "CC=$CC;\nCXX=$CXX;" && make build/debug && ctest --test-dir build/debug
+      - name: Build and test Release
         if: success() || failure() # run this step even if the previous step failed
-        run: 'echo -e "CC=$CC;\nCXX=$CXX;" && make build/release && ctest --test-dir build/release'
+        run: echo -e "CC=$CC;\nCXX=$CXX;" && make build/release && ctest --test-dir build/release
       - name: Show summary
         run: |
           ls -l build/*/upx
           size build/*/upx
           file build/*/upx
 
+  # test various -std=gnu++XX versions
   BS2: # uses cmake + make
     if: github.repository_owner == 'upx'
     strategy:
       fail-fast: false
       matrix:
         container:
-          - 'alpine:edge'
+          - alpine:edge
         cc:
-          - 'clang'
-          - 'gcc'
+          - clang
+          - gcc
         cxxflags:
-          - '-std=gnu++20'
-          - '-std=gnu++23'
+          - -std=gnu++20
+          - -std=gnu++23
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
-        run: 'apk update && apk upgrade && apk add clang cmake file g++ git make'
+        run: apk update && apk upgrade && apk add clang cmake file g++ git make
       - name: ${{ format('Check out {0} source code', github.ref_name) }}
         run: |
-          # this seems to be needed when running in a container (beause of UID mismatch??)
           git config --global --add safe.directory '*'
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
           git submodule update --init
@@ -124,54 +128,88 @@ jobs:
           echo -e "CC=$CC\nCXX=$CXX" >> $GITHUB_ENV
           echo "UPX_CONFIG_DISABLE_C_STANDARD=ON" >> $GITHUB_ENV
           echo "UPX_CONFIG_DISABLE_CXX_STANDARD=ON" >> $GITHUB_ENV
-      - name: 'Build and test Debug'
-        run: 'echo -e "CC=$CC;\nCXX=$CXX;" && make build/debug && ctest --test-dir build/debug'
-      - name: 'Build and test Release'
+      - name: Build and test Debug
+        run: echo -e "CC=$CC;\nCXX=$CXX;" && make build/debug && ctest --test-dir build/debug
+      - name: Build and test Release
         if: success() || failure() # run this step even if the previous step failed
-        run: 'echo -e "CC=$CC;\nCXX=$CXX;" && make build/release && ctest --test-dir build/release'
+        run: echo -e "CC=$CC;\nCXX=$CXX;" && make build/release && ctest --test-dir build/release
       - name: Show summary
         run: |
           ls -l build/*/upx
           size build/*/upx
           file build/*/upx
 
+  # test misc/make/Makefile-extra.mk targets
   BS3: # uses cmake + make
     if: github.repository_owner == 'upx'
     strategy:
       fail-fast: false
       matrix:
         container:
-          - 'alpine:3.19'
-          - 'alpine:edge'
-          - 'i386/alpine:3.19'
-          - 'i386/alpine:edge'
+          - alpine:3.19
+          - alpine:edge
+          - i386/alpine:3.19
+          - i386/alpine:edge
         cc:
-          - 'clang'
-          - 'gcc'
+          - clang
+          - gcc
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
     env:
       C: ${{ matrix.cc }}
+      UPX_CONFIG_DISABLE_EXHAUSTIVE_TESTS: 'ON' # because we are running many builds
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
-        run: 'apk update && apk upgrade && apk add clang cmake file g++ git make'
+        run: apk update && apk upgrade && apk add clang cmake file g++ git make
       - name: ${{ format('Check out {0} source code', github.ref_name) }}
         run: |
-          # this seems to be needed when running in a container (beause of UID mismatch??)
           git config --global --add safe.directory '*'
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
           git submodule update --init
-      # test misc/make/Makefile-extra.mk
-      - run: 'make build/extra/${C}/all+test'
-      - run: 'make build/extra/${C}-static/all+test'
-      - run: 'make build/extra/${C}-static-lto/all+test'
-      - run: 'make build/extra/${C}-static-pie/all+test'
-      - run: 'make build/extra/${C}-std-cxx20/all+test'
-      - run: 'make build/extra/${C}-std-cxx23/all+test'
-      - run: 'make build/extra/${C}-m32/all+test'
+      - run: make build/extra/${C}/all+test
+      - run: make build/extra/${C}-static/all+test
+      - run: make build/extra/${C}-static-lto/all+test
+      - run: make build/extra/${C}-static-pie/all+test
+      - run: make build/extra/${C}-std-cxx20/all+test
+      - run: make build/extra/${C}-std-cxx23/all+test
+      - run: make build/extra/${C}-m32/all+test
         if: ${{ startsWith(matrix.container, 'i386/') }}
-      - run: 'make build/extra/${C}-m64/all+test'
+      - run: make build/extra/${C}-m64/all+test
         if: ${{ !startsWith(matrix.container, 'i386/') }}
+      - name: Show summary
+        run: |
+          ls -l build/*/*/*/upx
+          size build/*/*/*/upx
+          file build/*/*/*/upx
+
+  # test that building with GNU_FRONTEND=0 still works
+  BS4: # uses cmake + make
+    if: github.repository_owner == 'upx'
+    strategy:
+      fail-fast: false
+      matrix:
+        container:
+          - alpine:edge
+          - i386/alpine:edge
+        cc:
+          - clang
+          - gcc
+        upx_cmake_config_flags:
+          - -DGNU_FRONTEND=0
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    env:
+      C: ${{ matrix.cc }}
+      UPX_CMAKE_CONFIG_FLAGS: ${{ matrix.upx_cmake_config_flags }}
+    steps:
+      - name: ${{ format('Install packages {0}', matrix.container) }}
+        run: apk update && apk upgrade && apk add clang cmake file g++ git make
+      - name: ${{ format('Check out {0} source code', github.ref_name) }}
+        run: |
+          git config --global --add safe.directory '*'
+          git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
+          git submodule update --init
+      - run: make build/extra/${C}/all+test
       - name: Show summary
         run: |
           ls -l build/*/*/*/upx
