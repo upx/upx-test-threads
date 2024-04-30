@@ -143,15 +143,15 @@ jobs:
           path: tmp/artifact
 
       - name: 'Run ctest tests clang-static'
-        run: 'make -C build/xtarget/clang-static/$release test'
+        run: 'make build/xtarget/clang-static/$release+test'
       - name: 'Run ctest tests clang-static-pie'
-        run: 'make -C build/xtarget/clang-static-pie/$release test'
+        run: 'make build/xtarget/clang-static-pie/$release+test'
       - name: 'Run ctest tests clang-asan'
         if: ${{ !matrix.skip_asan }}
-        run: 'make -C build/xtarget/clang-asan/$release test'
+        run: 'make build/xtarget/clang-asan/$release+test'
       - name: 'Run ctest tests clang-msan'
         if: ${{ !matrix.skip_msan }}
-        run: 'make -C build/xtarget/clang-msan/$release test'
+        run: 'make build/xtarget/clang-msan/$release+test'
 
       - name: 'Mimic ctest tests clang-static - QEMU'
         if: ${{ !matrix.skip_qemu && matrix.qemu }}

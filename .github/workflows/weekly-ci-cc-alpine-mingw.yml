@@ -189,19 +189,19 @@ jobs:
 
       - name: 'Run ctest tests under Wine - mingw32/debug'
         if: ${{ matrix.wine && matrix.i686_mingw }}
-        run: 'make -C build/extra/cross-windows-mingw32/debug test'
+        run: 'make build/extra/cross-windows-mingw32/debug+test'
 
       - name: 'Run ctest tests under Wine - mingw32/release'
         if: ${{ matrix.wine && matrix.i686_mingw }}
-        run: 'make -C build/extra/cross-windows-mingw32/release test'
+        run: 'make build/extra/cross-windows-mingw32/release+test'
 
       - name: 'Run ctest tests under Wine - mingw64/debug'
         if: ${{ matrix.wine }}
-        run: 'make -C build/extra/cross-windows-mingw64/debug test'
+        run: 'make build/extra/cross-windows-mingw64/debug+test'
 
       - name: 'Run ctest tests under Wine - mingw64/release'
         if: ${{ matrix.wine }}
-        run: 'make -C build/extra/cross-windows-mingw64/release test'
+        run: 'make build/extra/cross-windows-mingw64/release+test'
 
       - name: 'Mimic ctest tests under Wine - mingw32/debug'
         if: ${{ matrix.wine && matrix.i686_mingw }}
