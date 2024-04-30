@@ -46,7 +46,7 @@ jobs:
           - { container: 'alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
           - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
           # more 32-bit i386 versions, just for testing
-          # { container: 'i386/alpine:3.9' }  # clang-5,  gcc-8; BROKEN: clang -m32 problem with alignof() @BUG
+          # { container: 'i386/alpine:3.9' }  # clang-5,  gcc-8; BROKEN: clang build fails
           - { container: 'i386/alpine:3.10' } # clang-8,  gcc-8
           - { container: 'i386/alpine:3.11' } # clang-9,  gcc-9
           - { container: 'i386/alpine:3.12' } # clang-10, gcc-9
@@ -86,13 +86,13 @@ jobs:
 
       # build with default C11 and C++17
       - name: ${{ format('Build clang Release with {0}', env.clang_package) }}
-        run: 'make -C "upx with space" UPX_XTARGET=xtarget/clang-static CC="clang -static" CXX="clang++ -static"'
+        run: make -C "upx with space" UPX_XTARGET=xtarget/clang-static CC="clang -static" CXX="clang++ -static"
       - name: ${{ format('Build clang Debug with {0}', env.clang_package) }}
-        run: 'make -C "upx with space" UPX_XTARGET=xtarget/clang-static CC="clang -static" CXX="clang++ -static" xtarget/debug'
+        run: make -C "upx with space" UPX_XTARGET=xtarget/clang-static CC="clang -static" CXX="clang++ -static" xtarget/debug
       - name: ${{ format('Build gcc Release with {0}', env.gcc_package) }}
-        run: 'make -C "upx with space" UPX_XTARGET=xtarget/gcc-static   CC="gcc -static"   CXX="g++ -static"'
+        run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static   CC="gcc -static"   CXX="g++ -static"
       - name: ${{ format('Build gcc Debug with {0}', env.gcc_package) }}
-        run: 'make -C "upx with space" UPX_XTARGET=xtarget/gcc-static   CC="gcc -static"   CXX="g++ -static" xtarget/debug'
+        run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static   CC="gcc -static"   CXX="g++ -static" xtarget/debug
 
       # build with C17 and C++20
       - name: ${{ format('Build clang C++20 Release with {0}', env.clang_package) }}
@@ -145,20 +145,30 @@ jobs:
       # build with -flto
       - name: ${{ format('Build clang LTO Release with {0}', env.clang_package) }}
         if: matrix.use_lto
-        run: |
-          make -C "upx with space" UPX_XTARGET=xtarget/clang-static-cxxlto CC="clang -static -flto" CXX="clang++ -static -flto"
+        run: make -C "upx with space" UPX_XTARGET=xtarget/clang-static-lto CC="clang -static -flto" CXX="clang++ -static -flto"
       - name: ${{ format('Build clang LTO Debug with {0}', env.clang_package) }}
         if: matrix.use_lto
-        run: |
-          make -C "upx with space" UPX_XTARGET=xtarget/clang-static-cxxlto CC="clang -static -flto" CXX="clang++ -static -flto" xtarget/debug
+        run: make -C "upx with space" UPX_XTARGET=xtarget/clang-static-lto CC="clang -static -flto" CXX="clang++ -static -flto" xtarget/debug
       - name: ${{ format('Build gcc LTO Release with {0}', env.gcc_package) }}
         if: matrix.use_lto
-        run: |
-          make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-cxxlto   CC="gcc -static -flto"   CXX="g++ -static -flto"
+        run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-lto   CC="gcc -static -flto"   CXX="g++ -static -flto"
       - name: ${{ format('Build gcc LTO Debug with {0}', env.gcc_package) }}
         if: matrix.use_lto
-        run: |
-          make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-cxxlto   CC="gcc -static -flto"   CXX="g++ -static -flto" xtarget/debug
+        run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-lto   CC="gcc -static -flto"   CXX="g++ -static -flto" xtarget/debug
+
+      # build with -ffast-math; skip on i386 because it may conflict with default "fpmath" settings
+      - name: ${{ format('Build clang fast-math Release with {0}', env.clang_package) }}
+        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: skip
+        run: make -C "upx with space" UPX_XTARGET=xtarget/clang-static-fast-math CC="clang -static -ffast-math" CXX="clang++ -static -ffast-math"
+      - name: ${{ format('Build clang fast-math Debug with {0}', env.clang_package) }}
+        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: skip
+        run: make -C "upx with space" UPX_XTARGET=xtarget/clang-static-fast-math CC="clang -static -ffast-math" CXX="clang++ -static -ffast-math" xtarget/debug
+      - name: ${{ format('Build gcc fast-math Release with {0}', env.gcc_package) }}
+        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: skip
+        run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-fast-math   CC="gcc -static -ffast-math"   CXX="g++ -static -ffast-math"
+      - name: ${{ format('Build gcc fast-math Debug with {0}', env.gcc_package) }}
+        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: skip
+        run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-fast-math   CC="gcc -static -ffast-math"   CXX="g++ -static -ffast-math" xtarget/debug
 
       - { name: 'Strip release binaries', run: 'strip -p --strip-unneeded "upx with space"/build/*/*/release/upx' }
 
@@ -180,18 +190,13 @@ jobs:
           (cd "upx with space"/build/xtarget/gcc-static/release   && DESTDIR="$PWD/Install with cmake" cmake --install .)
           (cd "upx with space"/build/xtarget/gcc-static/release   && DESTDIR="$PWD/Install with make"  make install)
 
-      - { name: 'Run ctest tests clang Debug',   run: 'make -C "upx with space"/build/xtarget/clang-static/debug test' }
-      - { name: 'Run ctest tests clang Release', run: 'make -C "upx with space"/build/xtarget/clang-static/release test' }
-      - { name: 'Run ctest tests gcc Debug',     run: 'make -C "upx with space"/build/xtarget/gcc-static/debug test' }
-      - { name: 'Run ctest tests gcc Release',   run: 'make -C "upx with space"/build/xtarget/gcc-static/release test' }
-
-      - name: 'Run ctest tests C++20, C++23 and LTO'
-        if: matrix.use_cxx20 || matrix.use_cxx23 || matrix.use_cxx2b || matrix.use_lto
+      - name: 'Run ctest tests'
         run: |
-          for dir in "upx with space"/build/xtarget/*-cxx*/*; do
+          for dir in "upx with space"/build/*/*/*; do ls -l "$dir"/upx; done
+          for dir in "upx with space"/build/*/*/*; do
              echo "===== $dir"
              (cd "$dir" && ./upx --sysinfo -v)
-             make -C "$dir" test
+             (cd "$dir" && ctest --parallel 8)
           done
 
       - name: 'Run file system test suite (busybox)'
