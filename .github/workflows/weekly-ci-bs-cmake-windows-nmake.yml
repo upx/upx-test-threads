@@ -65,7 +65,6 @@ jobs:
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-nmake-vs${{ matrix.vsversion }}-${{ matrix.vsarch }}$X" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
           (cd build && cp -ai --parents */upx.exe "../tmp/artifact/$N")
-          # GitHub Actions magic: set "artifact_name" environment value for use in next step
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         uses: actions/upload-artifact@v4
@@ -77,8 +76,8 @@ jobs:
         run: |
           .\build\debug\upx.exe --sysinfo -v
           .\build\release\upx.exe --sysinfo -v
-          ctest --test-dir build/debug
-          ctest --test-dir build/release
+          ctest --test-dir build/debug   --parallel 8
+          ctest --test-dir build/release --parallel 8
       - name: 'Run install tests'
         run: |
           env DESTDIR=./Install-debug   cmake --install build/debug

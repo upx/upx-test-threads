@@ -1,12 +1,12 @@
 # Copyright (C) Markus Franz Xaver Johannes Oberhumer
-name: 'GitHub - Close pull requests'
+name: GitHub - Close pull requests
 on:
   #pull_request:
   workflow_dispatch:
 jobs:
   job-close-pull-requests:
     if: github.repository_owner == 'upx' && github.repository == 'upx/upx'
-    name: 'Close pull requests'
+    name: Close pull requests
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write

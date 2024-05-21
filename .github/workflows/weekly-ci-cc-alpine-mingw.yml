@@ -1,5 +1,5 @@
 # Copyright (C) Markus Franz Xaver Johannes Oberhumer
-# CC CompilationCheck: compile with various mingw-gcc versions and run tests under Wine
+# CC CompilationCheck: compile with various mingw-gcc versions and run tests with Wine
 
 name: 'Weekly CI CC - Alpine Linux MinGW'
 on:
@@ -47,14 +47,12 @@ jobs:
         if: ${{ matrix.wine }}
         run: |
           apk add wine
-          test -f /usr/bin/wine || ln -s -v wine64 /usr/bin/wine
-          # this seems to be needed for Wine when running in a container (beause of UID mismatch??)
+          test -f /usr/bin/wine || ln -s -v wine64 /usr/bin/wine # needed for Alpine < 3.18
           mkdir -p -v ~/.wine
           wineboot --init
       - name: ${{ format('Check out UPX {0} source code', github.ref_name) }}
         run: |
-          # this seems to be needed when running in a container (beause of UID mismatch??)
-          git config --global --add safe.directory '*'
+          git config --global --add safe.directory '*' # needed when running in a container
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
           git submodule update --init
       - name: 'Build cmake extra/cross-windows-mingw32/debug'
@@ -86,7 +84,6 @@ jobs:
           mkdir -p "tmp/artifact/$N"
           (cd build && shopt -s nullglob && cp -ai --parents */upx{,.exe} */*/*/upx{,.exe} "../tmp/artifact/$N")
           (cd tmp/artifact && tar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
-          # GitHub Actions magic: set "artifact_name" environment value for use in next step
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         uses: actions/upload-artifact@v4
@@ -94,7 +91,7 @@ jobs:
           name: ${{ env.artifact_name }}
           path: tmp/artifact
 
-      - name: ${{ format('Run test suite under Wine') }}
+      - name: ${{ format('Run test suite with Wine') }}
         if: ${{ matrix.wine }}
         run: |
           git clone --depth=1 https://github.com/upx/upx-testsuite ../upx-testsuite
@@ -111,7 +108,7 @@ jobs:
           UPX_TESTSUITE_LEVEL=4 \
           env -C build/extra/cross-windows-mingw64/release upx_exe=./upx.exe bash "$testsuite_1"
 
-      - name: 'Run basic tests under Wine - mingw32/debug'
+      - name: 'Run basic tests with Wine - mingw32/debug'
         if: ${{ matrix.wine && matrix.i686_mingw }}
         shell: bash
         run: |
@@ -130,7 +127,7 @@ jobs:
           $wine ./tt.packed.exe --version-short
           $wine ./tt.unpacked.exe --version-short
 
-      - name: 'Run basic tests under Wine - mingw32/release'
+      - name: 'Run basic tests with Wine - mingw32/release'
         if: ${{ matrix.wine && matrix.i686_mingw }}
         shell: bash
         run: |
@@ -149,7 +146,7 @@ jobs:
           $wine ./tt.packed.exe --version-short
           $wine ./tt.unpacked.exe --version-short
 
-      - name: 'Run basic tests under Wine - mingw64/debug'
+      - name: 'Run basic tests with Wine - mingw64/debug'
         if: ${{ matrix.wine }}
         shell: bash
         run: |
@@ -168,7 +165,7 @@ jobs:
           $wine ./tt.packed.exe --version-short
           $wine ./tt.unpacked.exe --version-short
 
-      - name: 'Run basic tests under Wine - mingw64/release'
+      - name: 'Run basic tests with Wine - mingw64/release'
         if: ${{ matrix.wine }}
         shell: bash
         run: |
@@ -187,34 +184,34 @@ jobs:
           $wine ./tt.packed.exe --version-short
           $wine ./tt.unpacked.exe --version-short
 
-      - name: 'Run ctest tests under Wine - mingw32/debug'
+      - name: 'Run ctest tests with Wine - mingw32/debug'
         if: ${{ matrix.wine && matrix.i686_mingw }}
         run: 'make build/extra/cross-windows-mingw32/debug+test'
 
-      - name: 'Run ctest tests under Wine - mingw32/release'
+      - name: 'Run ctest tests with Wine - mingw32/release'
         if: ${{ matrix.wine && matrix.i686_mingw }}
         run: 'make build/extra/cross-windows-mingw32/release+test'
 
-      - name: 'Run ctest tests under Wine - mingw64/debug'
+      - name: 'Run ctest tests with Wine - mingw64/debug'
         if: ${{ matrix.wine }}
         run: 'make build/extra/cross-windows-mingw64/debug+test'
 
-      - name: 'Run ctest tests under Wine - mingw64/release'
+      - name: 'Run ctest tests with Wine - mingw64/release'
         if: ${{ matrix.wine }}
         run: 'make build/extra/cross-windows-mingw64/release+test'
 
-      - name: 'Mimic ctest tests under Wine - mingw32/debug'
+      - name: 'Mimic ctest tests with Wine - mingw32/debug'
         if: ${{ matrix.wine && matrix.i686_mingw }}
         run: 'env -C build/extra/cross-windows-mingw32/debug upx_exe=./upx.exe upx_exe_runner=wine bash "$PWD"/misc/testsuite/mimic_ctest.sh'
 
-      - name: 'Mimic ctest tests under Wine - mingw32/release'
+      - name: 'Mimic ctest tests with Wine - mingw32/release'
         if: ${{ matrix.wine && matrix.i686_mingw }}
         run: 'env -C build/extra/cross-windows-mingw32/release upx_exe=./upx.exe upx_exe_runner=wine bash "$PWD"/misc/testsuite/mimic_ctest.sh'
 
-      - name: 'Mimic ctest tests under Wine - mingw64/debug'
+      - name: 'Mimic ctest tests with Wine - mingw64/debug'
         if: ${{ matrix.wine }}
         run: 'env -C build/extra/cross-windows-mingw64/debug upx_exe=./upx.exe upx_exe_runner=wine bash "$PWD"/misc/testsuite/mimic_ctest.sh'
 
-      - name: 'Mimic ctest tests under Wine - mingw64/release'
+      - name: 'Mimic ctest tests with Wine - mingw64/release'
         if: ${{ matrix.wine }}
         run: 'env -C build/extra/cross-windows-mingw64/release upx_exe=./upx.exe upx_exe_runner=wine bash "$PWD"/misc/testsuite/mimic_ctest.sh'
