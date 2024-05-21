@@ -12,14 +12,14 @@
 #    Abandoned Issues and Pull Request".
 #   https://igorwiese.com/images/papers/Paper_BotSE_19.pdf
 
-name: 'GitHub - Close inactive issues'
+name: GitHub - Close inactive issues
 on:
-  #schedule: [cron: '50 0 * * 3'] # run weekly Wednesday 00:50 UTC
+  #schedule: [cron: "50 0 * * 3"] # run weekly Wednesday 00:50 UTC
   workflow_dispatch:
 jobs:
   job-close-inactive-issues:
     if: github.repository_owner == 'upx' && github.repository == 'upx/upx'
-    name: 'Close inactive issues'
+    name: Close inactive issues
     runs-on: ubuntu-latest
     permissions:
       issues: write

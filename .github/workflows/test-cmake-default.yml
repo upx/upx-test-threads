@@ -24,7 +24,7 @@ jobs:
         run: |
           cmake -S . -B build/default -G "Unix Makefiles"
           cmake --build build/default --parallel --verbose
-          ctest --test-dir build/default
+          ctest --test-dir build/default --parallel 8
           (cd build/default && DESTDIR=$PWD/Install-default cmake --install .)
           # "make test" also works
           env -C build/default make test
@@ -42,7 +42,7 @@ jobs:
           test -f /usr/bin/ninja || sudo apt-get install -y ninja-build
           cmake -S . -B build/default -G Ninja
           cmake --build build/default --parallel --verbose
-          ctest --test-dir build/default
+          ctest --test-dir build/default --parallel 8
           (cd build/default && DESTDIR=$PWD/Install-default cmake --install .)
           # "ninja test" also works
           env -C build/default ninja test
@@ -65,7 +65,7 @@ jobs:
         run: |
           cmake -S . -B build/default -G "NMake Makefiles"
           cmake --build build/default --parallel --verbose
-          ctest --test-dir build/default
+          ctest --test-dir build/default --parallel 8
           # "cmake --install" works on Windows as well, nice
           env -C build/default DESTDIR=./Install-default cmake --install .
           # "nmake test" also works
@@ -91,7 +91,7 @@ jobs:
           cmake -S . -B build/default -G "Ninja Multi-Config"
           cmake --build build/default --parallel --verbose
           # multi-config: ctest NEEDS a config
-          ctest --test-dir build/default -C Release
+          ctest --test-dir build/default -C Release --parallel 8
           (cd build/default && DESTDIR=$PWD/Install-default cmake --install .)
           # "ninja test" also works with multi-config
           env -C build/default ninja test
@@ -116,7 +116,7 @@ jobs:
           cmake -S . -B build/default
           cmake --build build/default --parallel --verbose
           # multi-config: ctest NEEDS a config
-          ctest --test-dir build/default -C Debug
+          ctest --test-dir build/default -C Debug --parallel 8
           # TODO: does cmake --install work?
 
   # xcode-multi-config (xcodebuild) seems to use "Debug" by default, except for "cmake --install" (BUG?)
@@ -133,6 +133,6 @@ jobs:
           cmake -S . -B build/default -G Xcode
           cmake --build build/default --parallel --verbose
           # multi-config: ctest NEEDS a config
-          ctest --test-dir build/default -C Debug
+          ctest --test-dir build/default -C Debug --parallel 8
           # BUG(?) multi-config: cmake --install defaults to "Release" !!
           (cd build/default && DESTDIR=$PWD/Install-default cmake --install . --config Debug)

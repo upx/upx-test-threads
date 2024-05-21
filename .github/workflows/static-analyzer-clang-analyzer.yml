@@ -1,6 +1,6 @@
 # Copyright (C) Markus Franz Xaver Johannes Oberhumer
 
-name: 'Static Analyzer - clang-analyzer'
+name: Static Analyzer - clang-analyzer
 on:
   schedule: [cron: '10 4 * * 3'] # run weekly Wednesday 04:10 UTC
   workflow_dispatch:
@@ -19,30 +19,43 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - container: 'alpine:3.16'          # clang-13
-          - container: 'alpine:3.17'          # clang-15
-          - container: 'alpine:3.18'          # clang-16
-          - container: 'alpine:3.19'          # clang-17
-          - container: 'alpine:edge'          # clang-17
-          - container: 'i386/alpine:3.16'     # clang-13
-          - container: 'i386/alpine:3.17'     # clang-15
-          - container: 'i386/alpine:3.18'     # clang-16
-          - container: 'i386/alpine:3.19'     # clang-17
-          - container: 'i386/alpine:edge'     # clang-17
-    name: ${{ format('Analyze clang-analyzer {0}', matrix.container) }}
+          - container: alpine:3.16                  # clang-13
+          - container: alpine:3.17                  # clang-15
+          - container: alpine:3.18                  # clang-16
+          - container: alpine:3.19                  # clang-17
+          - container: alpine:edge                  # clang-17
+          - container: chimeralinux/chimera:latest  # clang-18; uses libc++ instead of libstdc++
+          - container: fedora:rawhide               # clang-18
+          - container: i386/alpine:3.16             # clang-13
+          - container: i386/alpine:3.17             # clang-15
+          - container: i386/alpine:3.18             # clang-16
+          - container: i386/alpine:3.19             # clang-17
+          - container: i386/alpine:edge             # clang-17
+    name: ${{ format('clang-analyzer {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
-        run: 'apk update && apk upgrade && apk add clang clang-analyzer cmake g++ git make'
+        run: |
+          if test -f /etc/fedora-release; then
+            dnf update -y
+            dnf install -y clang clang-analyzer cmake git make time
+          elif test -f /etc/chimera-release; then
+            apk update && apk upgrade
+            apk add clang clang-analyzer cmake git gmake
+            ln -s -v gmake /usr/bin/make
+          else
+            apk update && apk upgrade
+            apk add clang clang-analyzer cmake g++ git make
+          fi
+          true
       - name: ${{ format('Check out UPX {0} source code', github.ref_name) }}
         run: |
-          # this seems to be needed when running in a container (beause of UID mismatch??)
-          git config --global --add safe.directory '*'
+          git config --global --add safe.directory '*' # needed when running in a container
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
           git submodule update --init
-      - name: 'Perform clang-analyzer scan-build Analysis Debug'
-        run: 'make build/analyze/clang-analyzer/debug'
-      - name: 'Perform clang-analyzer scan-build Analysis Release'
+      - name: Perform clang-analyzer scan-build Analysis Debug
+        run: make build/analyze/clang-analyzer/debug
+      - name: Perform clang-analyzer scan-build Analysis Release
         if: success() || failure() # run this step even if the previous step failed
-        run: 'make build/analyze/clang-analyzer/release'
+        run: make build/analyze/clang-analyzer/release
