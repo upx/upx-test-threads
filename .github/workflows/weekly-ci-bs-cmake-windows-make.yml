@@ -79,7 +79,6 @@ jobs:
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-make-${xtarget}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
           (cd build && cp -ai --parents xtarget/*/*/upx.exe "../tmp/artifact/$N")
-          # GitHub Actions magic: set "artifact_name" environment value for use in next step
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         uses: actions/upload-artifact@v4
@@ -92,8 +91,8 @@ jobs:
         run: |
           ./build/xtarget/$xtarget/debug/upx.exe --sysinfo -v
           ./build/xtarget/$xtarget/release/upx.exe --sysinfo -v
-          ctest --test-dir build/xtarget/$xtarget/debug
-          ctest --test-dir build/xtarget/$xtarget/release
+          ctest --test-dir build/xtarget/$xtarget/debug   --parallel 8
+          ctest --test-dir build/xtarget/$xtarget/release --parallel 8
       - name: 'Run install tests'
         shell: bash
         run: |

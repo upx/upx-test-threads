@@ -1,6 +1,6 @@
 # Copyright (C) Markus Franz Xaver Johannes Oberhumer
 
-name: 'Static Analyzer - CodeQL'
+name: Static Analyzer - CodeQL
 on:
   schedule: [cron: '50 4 * * 3'] # run weekly Wednesday 04:50 UTC
   workflow_dispatch:
@@ -15,7 +15,7 @@ env:
 jobs:
   job-analyze-codeql:
     if: github.repository_owner == 'upx'
-    name: Analyze
+    name: CodeQL
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'cpp' ]
+        language: [ cpp ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

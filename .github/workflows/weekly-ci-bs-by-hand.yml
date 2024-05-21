@@ -37,8 +37,7 @@ jobs:
           # enable ccache and some warnings
           xflags="-static -Wall -Wextra -Werror"
           echo -e "CC=ccache gcc $xflags\nCXX=ccache g++ -std=gnu++17 $xflags" >> $GITHUB_ENV
-          # this seems to be needed when running in a container (beause of UID mismatch??)
-          git config --global --add safe.directory '*'
+          git config --global --add safe.directory '*' # needed when running in a container
           # create user upx:upx 2000:2000 for file system tests below ("sudo")
           adduser upx -u 2000 -D && cd /home/upx && chmod 00700 . && chown -R upx:upx .
       - name: ${{ format('Check out UPX {0} source code', github.ref_name) }}
