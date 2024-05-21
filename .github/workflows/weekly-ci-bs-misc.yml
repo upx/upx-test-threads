@@ -84,10 +84,9 @@ jobs:
           esac
           echo -e "CC=$CC\nCXX=$CXX" >> $GITHUB_ENV
       - name: Build and test Debug
-        run: echo -e "CC=$CC;\nCXX=$CXX;" && make build/debug && ctest --test-dir build/debug
+        run: make build/debug+test
       - name: Build and test Release
-        if: success() || failure() # run this step even if the previous step failed
-        run: echo -e "CC=$CC;\nCXX=$CXX;" && make build/release && ctest --test-dir build/release
+        run: make build/release+test
       - name: Show summary
         run: |
           ls -l build/*/upx
@@ -129,10 +128,9 @@ jobs:
           echo "UPX_CONFIG_DISABLE_C_STANDARD=ON" >> $GITHUB_ENV
           echo "UPX_CONFIG_DISABLE_CXX_STANDARD=ON" >> $GITHUB_ENV
       - name: Build and test Debug
-        run: echo -e "CC=$CC;\nCXX=$CXX;" && make build/debug && ctest --test-dir build/debug
+        run: make build/debug+test
       - name: Build and test Release
-        if: success() || failure() # run this step even if the previous step failed
-        run: echo -e "CC=$CC;\nCXX=$CXX;" && make build/release && ctest --test-dir build/release
+        run: make build/release+test
       - name: Show summary
         run: |
           ls -l build/*/upx

@@ -16,8 +16,8 @@ env:
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
-  # 2024-04-25
-  ZIG_DIST_VERSION: 0.13.0-dev.44+9d64332a5
+  # 2024-04-26
+  ZIG_DIST_VERSION: 0.13.0-dev.46+3648d7df1
 
 jobs:
   job-linux-zigcc: # uses cmake + make
@@ -74,8 +74,7 @@ jobs:
           apk update && apk upgrade && apk add bash cmake file git make tar xz
           # set PATH like in Ubuntu
           echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
-          # this seems to be needed when running in a container (beause of UID mismatch??)
-          git config --global --add safe.directory '*'
+          git config --global --add safe.directory '*' # needed when running in a container
       - name: 'Check out code'
         run: |
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
@@ -83,7 +82,6 @@ jobs:
       - name: ${{ format('Install Zig {0}', env.ZIG_DIST_VERSION) }}
         shell: bash
         run: |
-          # GitHub Actions magic: set "UPX_GITREV_SHORT" environment value for use in steps below
           rev=$(git rev-parse --short=7 HEAD)
           echo "UPX_GITREV_SHORT=$rev" >> $GITHUB_ENV
           # update ZIG_TARGET (i386 => x86)
@@ -124,7 +122,6 @@ jobs:
           mkdir -p "tmp/artifact/$N"
           (cd build && shopt -s nullglob && cp -ai --parents */upx{,.exe} */*/*/upx{,.exe} "../tmp/artifact/$N")
           (cd tmp/artifact && tar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
-          # GitHub Actions magic: set "artifact_name" environment value for use in next step
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         uses: actions/upload-artifact@v4
