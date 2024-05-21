@@ -92,8 +92,7 @@ jobs:
           uname -a; pwd; id; umask
           apk update && apk upgrade
           apk add bash clang cmake compiler-rt coreutils g++ git make qemu-i386 qemu-x86_64 tar valgrind
-          # this seems to be needed when running in a container (beause of UID mismatch??)
-          git config --global --add safe.directory '*'
+          git config --global --add safe.directory '*' # needed when running in a container
       - name: ${{ format('Check out UPX {0} source code', github.ref_name) }}
         run: |
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
@@ -133,7 +132,6 @@ jobs:
           mkdir -p "tmp/artifact/$N"
           (cd build && cp -ai --parents */*/*/upx "../tmp/artifact/$N")
           (cd tmp/artifact && tar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
-          # GitHub Actions magic: set "artifact_name" environment value for use in next step
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: missing nodejs on host
