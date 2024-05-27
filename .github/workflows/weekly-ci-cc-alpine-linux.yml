@@ -43,6 +43,7 @@ jobs:
           - { container: 'alpine:3.17', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
           - { container: 'alpine:3.18', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
           - { container: 'alpine:3.19', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
+          - { container: 'alpine:3.20', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
           - { container: 'alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
           - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
           # more 32-bit i386 versions, just for testing
@@ -57,6 +58,7 @@ jobs:
           - { container: 'i386/alpine:3.17' } # clang-15, gcc-12
           - { container: 'i386/alpine:3.18' } # clang-16, gcc-12
           - { container: 'i386/alpine:3.19' } # clang-17, gcc-13
+          - { container: 'i386/alpine:3.20' } # clang-17, gcc-13
     name: ${{ format('container {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
