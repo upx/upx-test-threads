@@ -36,19 +36,6 @@ jobs:
           - name: llvm-mingw-20231128-ucrt
             llvm_version: 17.0.6
             url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20231128/llvm-mingw-20231128-ucrt-ubuntu-20.04-x86_64.tar.xz'
-          - name: llvm-mingw-20240417-msvcrt
-            llvm_version: 18.1.4
-            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240417/llvm-mingw-20240417-msvcrt-ubuntu-20.04-x86_64.tar.xz'
-          - name: llvm-mingw-20240417-ucrt
-            llvm_version: 18.1.4
-            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240417/llvm-mingw-20240417-ucrt-ubuntu-20.04-x86_64.tar.xz'
-# BROKEN for i686 msvcrt; see https://github.com/mstorsjo/llvm-mingw/issues/427
-#         - name: llvm-mingw-20240502-msvcrt
-#           llvm_version: 18.1.5
-#           url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240502/llvm-mingw-20240502-msvcrt-ubuntu-20.04-x86_64.tar.xz'
-          - name: llvm-mingw-20240502-ucrt
-            llvm_version: 18.1.5
-            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240502/llvm-mingw-20240502-ucrt-ubuntu-20.04-x86_64.tar.xz'
           - name: llvm-mingw-20240518-msvcrt
             llvm_version: 18.1.6
             url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240518/llvm-mingw-20240518-msvcrt-ubuntu-20.04-x86_64.tar.xz'
@@ -62,8 +49,7 @@ jobs:
       CMAKE_SYSTEM_NAME: Windows
       xflags: -D_WIN32_WINNT=0x0400
     steps:
-      - name: ${{ format('Install packages {0}', job.container) }}
-        if: ${{ job.container }}
+      - name: Install packages
         run: |
           dpkg --add-architecture i386
           apt-get update && apt-get upgrade -y
