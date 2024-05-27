@@ -22,15 +22,15 @@ env:
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
-  # 2024-04-26
-  ZIG_DIST_VERSION: 0.13.0-dev.46+3648d7df1
+  # 2024-05-24
+  ZIG_DIST_VERSION: 0.13.0-dev.260+fb88cfdf6
 
 jobs:
   job-linux-zigcc: # uses cmake + make
     if: github.repository_owner == 'upx'
     name: ${{ format('zigcc {0} {1}', matrix.zig_target, matrix.zig_pic) }}
     runs-on: ubuntu-latest
-    container: 'i386/alpine:edge' # ci.yml uses alpine:3.19, so we test alpine:edge here
+    container: 'i386/alpine:edge' # ci.yml uses alpine:3.20, so we test alpine:edge here
     strategy:
       fail-fast: false
       matrix:

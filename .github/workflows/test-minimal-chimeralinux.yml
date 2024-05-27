@@ -24,7 +24,7 @@ jobs:
         run: |
           apk update && apk upgrade && apk add bsdtar clang cmake curl gmake
           for p in make; do ln -s -v ../../bin/g$p /usr/local/bin/$p; done
-          curl -OL https://github.com/upx/upx/releases/download/v4.2.3/upx-4.2.3-src.tar.xz
+          curl -sS -L -O https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug+test   CC="clang" CXX="clang++"
@@ -52,7 +52,7 @@ jobs:
           for p in make; do ln -s -v ../../bin/g$p /usr/local/bin/$p; done
           # install devel-static packages
           apk add libatomic-chimera-devel-static libcxx-devel-static musl-devel-static
-          curl -OL https://github.com/upx/upx/releases/download/v4.2.3/upx-4.2.3-src.tar.xz
+          curl -sS -L -O https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug+test   CC="clang -static" CXX="clang++ -static"
