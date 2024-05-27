@@ -17,7 +17,7 @@ env:
 
 jobs:
   # test YAML
-  BS0:
+  BS0-YAML:
     if: github.repository_owner == 'upx'
     runs-on: ubuntu-latest
     container: alpine:edge
@@ -31,8 +31,10 @@ jobs:
           git config --global --add safe.directory '*'
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
           git submodule update --init
+      - run: bash ./misc/scripts/check_whitespace.sh
       - run: bash ./misc/scripts/check_whitespace_git.sh
       - name: YAML checks
+        shell: bash
         run: |
           for f in .clang-format .clang-tidy .clangd $(find . -type f -iname '*.yml' | LC_ALL=C sort); do
             echo "===== checking file"
@@ -83,54 +85,9 @@ jobs:
             *)     exit 99 ;;
           esac
           echo -e "CC=$CC\nCXX=$CXX" >> $GITHUB_ENV
-      - name: Build and test Debug
-        run: make build/debug+test
-      - name: Build and test Release
-        run: make build/release+test
-      - name: Show summary
-        run: |
-          ls -l build/*/upx
-          size build/*/upx
-          file build/*/upx
-
-  # test various -std=gnu++XX versions
-  BS2: # uses cmake + make
-    if: github.repository_owner == 'upx'
-    strategy:
-      fail-fast: false
-      matrix:
-        container:
-          - alpine:edge
-        cc:
-          - clang
-          - gcc
-        cxxflags:
-          - -std=gnu++20
-          - -std=gnu++23
-    runs-on: ubuntu-latest
-    container: ${{ matrix.container }}
-    steps:
-      - name: ${{ format('Install packages {0}', matrix.container) }}
-        run: apk update && apk upgrade && apk add clang cmake file g++ git make
-      - name: ${{ format('Check out {0} source code', github.ref_name) }}
-        run: |
-          git config --global --add safe.directory '*'
-          git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
-          git submodule update --init
-          # prepare environment
-          xflags="-static"
-          case ${{ matrix.cc }} in
-            clang) CC="clang $xflags"; CXX="clang++ $xflags ${{ matrix.cxxflags }}" ;;
-            gcc)   CC="gcc $xflags";   CXX="g++ $xflags ${{ matrix.cxxflags }}" ;;
-            *)     exit 99 ;;
-          esac
-          echo -e "CC=$CC\nCXX=$CXX" >> $GITHUB_ENV
-          echo "UPX_CONFIG_DISABLE_C_STANDARD=ON" >> $GITHUB_ENV
-          echo "UPX_CONFIG_DISABLE_CXX_STANDARD=ON" >> $GITHUB_ENV
-      - name: Build and test Debug
-        run: make build/debug+test
-      - name: Build and test Release
-        run: make build/release+test
+      - run: $CC --version; $CXX --version
+      - run: make build/debug+test
+      - run: make build/release+test
       - name: Show summary
         run: |
           ls -l build/*/upx
@@ -138,27 +95,32 @@ jobs:
           file build/*/upx
 
   # test misc/make/Makefile-extra.mk targets
-  BS3: # uses cmake + make
+  BS2: # uses cmake + make
     if: github.repository_owner == 'upx'
     strategy:
       fail-fast: false
       matrix:
         container:
-          - alpine:3.19
+          - alpine:3.20
           - alpine:edge
-          - i386/alpine:3.19
+          - i386/alpine:3.20
           - i386/alpine:edge
         cc:
           - clang
           - gcc
+        cmake_generator:
+          - Unix Makefiles
+          - Ninja
+          - Ninja Multi-Config
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
     env:
       C: ${{ matrix.cc }}
-      UPX_CONFIG_DISABLE_EXHAUSTIVE_TESTS: 'ON' # because we are running many builds
+      UPX_CMAKE_CONFIG_FLAGS: -G "${{ matrix.cmake_generator }}"
+      ##UPX_CONFIG_DISABLE_EXHAUSTIVE_TESTS: 'ON' # because we are running many builds
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
-        run: apk update && apk upgrade && apk add clang cmake file g++ git make
+        run: apk update && apk upgrade && apk add clang cmake file g++ git make ninja-is-really-ninja
       - name: ${{ format('Check out {0} source code', github.ref_name) }}
         run: |
           git config --global --add safe.directory '*'
@@ -174,14 +136,17 @@ jobs:
         if: ${{ startsWith(matrix.container, 'i386/') }}
       - run: make build/extra/${C}-m64/all+test
         if: ${{ !startsWith(matrix.container, 'i386/') }}
+      - run: apk add bash
       - name: Show summary
+        shell: bash
         run: |
-          ls -l build/*/*/*/upx
-          size build/*/*/*/upx
-          file build/*/*/*/upx
+          shopt -s globstar # available since bash-4.0
+          ls -l build/**/upx
+          size build/**/upx
+          file build/**/upx
 
   # test that building with GNU_FRONTEND=0 still works
-  BS4: # uses cmake + make
+  BS3: # uses cmake + make
     if: github.repository_owner == 'upx'
     strategy:
       fail-fast: false

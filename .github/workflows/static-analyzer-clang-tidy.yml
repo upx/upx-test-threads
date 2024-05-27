@@ -22,12 +22,14 @@ jobs:
           - container: alpine:3.17                  # clang-15
           - container: alpine:3.18                  # clang-16
           - container: alpine:3.19                  # clang-17
+          - container: alpine:3.20                  # clang-17
           - container: alpine:edge                  # clang-17
           - container: chimeralinux/chimera:latest  # clang-18; uses libc++ instead of libstdc++
           - container: fedora:rawhide               # clang-18
           - container: i386/alpine:3.17             # clang-15
           - container: i386/alpine:3.18             # clang-16
           - container: i386/alpine:3.19             # clang-17
+          - container: i386/alpine:3.20             # clang-17
           - container: i386/alpine:edge             # clang-17
     name: ${{ format('clang-tidy {0}', matrix.container) }}
     runs-on: ubuntu-latest
