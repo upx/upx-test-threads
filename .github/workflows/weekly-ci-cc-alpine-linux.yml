@@ -10,7 +10,7 @@
 # info: Alpine Linux 3.9 (released Jan 2019) has clang-5, cmake-3.13.0
 #   and gcc-8, which nicely matches our minimal build requirements
 
-name: 'Weekly CI CC - Alpine Linux C++23'
+name: Weekly CI CC - Alpine Linux
 on:
   schedule: [cron: '00 2 * * 3'] # run weekly Wednesday 02:00 UTC
   workflow_dispatch:
@@ -39,13 +39,13 @@ jobs:
           - { container: 'alpine:3.13', use_cxx20: 0, use_cxx2b: 0, use_lto: 0 } # Jan 2021: C++20; clang-10 & gcc-10; INFO: clang-10 is NOT fully C++20 compatible
           - { container: 'alpine:3.14', use_cxx20: 1, use_cxx2b: 0, use_lto: 0 } # Jun 2021: C++20; clang-11 & gcc-10
           - { container: 'alpine:3.15', use_cxx20: 1, use_cxx2b: 0, use_lto: 1 } # Nov 2021: LTO;   clang-12 & gcc-10 & binutils-2.37
-          - { container: 'alpine:3.16', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 } # May 2022: C++2b; clang-13 & gcc-11
-          - { container: 'alpine:3.17', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
-          - { container: 'alpine:3.18', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
-          - { container: 'alpine:3.19', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
-          - { container: 'alpine:3.20', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
-          - { container: 'alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
-          - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 1 }
+          - { container: 'alpine:3.16', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 } # May 2022: C++2b; clang-13 & gcc-11
+          - { container: 'alpine:3.17', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
+          - { container: 'alpine:3.18', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
+          - { container: 'alpine:3.19', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
+          - { container: 'alpine:3.20', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
+          - { container: 'alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
+          - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           # more 32-bit i386 versions, just for testing
           # { container: 'i386/alpine:3.9' }  # clang-5,  gcc-8; BROKEN: clang build fails
           - { container: 'i386/alpine:3.10' } # clang-8,  gcc-8
@@ -66,25 +66,37 @@ jobs:
       - name: ${{ format('Install packages {0}', matrix.container) }}
         run: |
           apk update && apk upgrade && apk add clang cmake g++ git make
-          case ${{ matrix.container }} in
+          case "${{ matrix.container }}" in
             # clang-dev is needed on Alpine versions <= 3.11 for clang headers like <emmintrin.h>
             *:3.[0-9] | *:3.1[0-1]) apk add clang-dev ;;
           esac
-          case ${{ matrix.container }}-${{ matrix.use_lto }} in
+          case "${{ matrix.container }}-${{ matrix.use_lto }}" in
             # llvm-dev is needed on Alpine versions <= 3.18 for -flto
-            *:3.[0-9]-1 | *:3.1[0-8]-1) apk add llvm-dev ;;
+            *:3.[0-9]-[12] | *:3.1[0-8]-[12]) apk add llvm-dev ;;
           esac
           # set environment vars
           x="$(apk list -I "$(apk info -Wq "$(which clang)")")"; echo "clang_package=${x%% *}" >> $GITHUB_ENV
           x="$(apk list -I "$(apk info -Wq "$(which gcc)")")"; echo "gcc_package=${x%% *}" >> $GITHUB_ENV
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-alpine-${{ matrix.container }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
-          echo "artifact_name=$N" >> $GITHUB_ENV
+          # currently need at least Alpine >= 3.11 for working nodejs on current GitHub Actions runner host
+          case "${{ matrix.container }}" in
+            i386/*) ;; # i386: missing nodejs on GitHub runner host
+            *:3.[0-9] | *:3.10) ;;
+            *) echo "artifact_name=$N" >> $GITHUB_ENV ;;
+          esac
           # create user upx:upx 2000:2000 for file system tests below ("sudo")
           adduser upx -u 2000 -D && cd /home/upx && chmod 00700 . && chown -R upx:upx .
       - name: ${{ format('Check out UPX {0} source code', github.ref_name) }}
         run: |
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "upx with space"
           git -C "upx with space" submodule update --init
+
+      - run: set -x; clang --version; clang++ --version
+      - run: set -x; gcc --version; g++ --version
+      - run: clang   -E -x c   -dM /dev/null # list predefined macros for C
+      - run: clang++ -E -x c++ -dM /dev/null # list predefined macros for C++
+      - run: gcc     -E -x c   -dM /dev/null # list predefined macros for C
+      - run: g++     -E -x c++ -dM /dev/null # list predefined macros for C++
 
       # build with default C11 and C++17
       - name: ${{ format('Build clang Release with {0}', env.clang_package) }}
@@ -158,6 +170,20 @@ jobs:
         if: matrix.use_lto
         run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-lto   CC="gcc -static -flto"   CXX="g++ -static -flto" xtarget/debug
 
+      # build with -flto=auto (clang-13, gcc-11)
+      - name: ${{ format('Build clang LTO=auto Release with {0}', env.clang_package) }}
+        if: matrix.use_lto >= 2
+        run: make -C "upx with space" UPX_XTARGET=xtarget/clang-static-lto-auto CC="clang -static -flto=auto" CXX="clang++ -static -flto=auto"
+      - name: ${{ format('Build clang LTO=auto Debug with {0}', env.clang_package) }}
+        if: matrix.use_lto >= 2
+        run: make -C "upx with space" UPX_XTARGET=xtarget/clang-static-lto-auto CC="clang -static -flto=auto" CXX="clang++ -static -flto=auto" xtarget/debug
+      - name: ${{ format('Build gcc LTO=auto Release with {0}', env.gcc_package) }}
+        if: matrix.use_lto >= 2
+        run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-lto-auto   CC="gcc -static -flto=auto"   CXX="g++ -static -flto=auto"
+      - name: ${{ format('Build gcc LTO=auto Debug with {0}', env.gcc_package) }}
+        if: matrix.use_lto >= 2
+        run: make -C "upx with space" UPX_XTARGET=xtarget/gcc-static-lto-auto   CC="gcc -static -flto=auto"   CXX="g++ -static -flto=auto" xtarget/debug
+
       # build with -ffast-math; skip on i386 because it may conflict with default "fpmath" settings
       - name: ${{ format('Build clang fast-math Release with {0}', env.clang_package) }}
         if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: skip
@@ -175,7 +201,7 @@ jobs:
       - { name: 'Strip release binaries', run: 'strip -p --strip-unneeded "upx with space"/build/*/*/release/upx' }
 
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
-        if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: missing nodejs on host
+        if: ${{ env.artifact_name }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifact_name }}
