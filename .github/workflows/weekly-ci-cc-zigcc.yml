@@ -16,8 +16,8 @@ env:
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
-  # 2024-05-24
-  ZIG_DIST_VERSION: 0.13.0-dev.260+fb88cfdf6
+  # 2024-06-07
+  ZIG_DIST_VERSION: 0.13.0
 
 jobs:
   job-linux-zigcc: # uses cmake + make
@@ -42,12 +42,12 @@ jobs:
           - { zig_target: i386-linux-musl, qemu: qemu-i386 }
           - { zig_target: i386-linux-musl, qemu: qemu-i386, zig_pic: -fPIE }
           - { zig_target: i386-windows-gnu }
-          # mips and mipsel: bad hard-float code generation(??); or QEMU bug; or UPX bug; see https://github.com/upx/upx/issues/788
-          - { zig_target: mips-linux-musl, zig_flags: -msoft-float, qemu: qemu-mips }
-          - { zig_target: mipsel-linux-musl, zig_flags: -msoft-float, qemu: qemu-mipsel }
+          - { zig_target: mips-linux-musl, qemu: qemu-mips }
+          - { zig_target: mips-linux-muslsf, zig_flags: -msoft-float, qemu: qemu-mips }
+          - { zig_target: mipsel-linux-musl, qemu: qemu-mipsel }
+          - { zig_target: mipsel-linux-muslsf, zig_flags: -msoft-float, qemu: qemu-mipsel }
           - { zig_target: powerpc-linux-musl, qemu: qemu-ppc }
-          # powerpc64: obscure problem with C++ exceptions in UPX doctest checks; use -fPIC to work-around
-          - { zig_target: powerpc64-linux-musl, zig_flags: -fPIC, qemu: qemu-ppc64 }
+          - { zig_target: powerpc64-linux-musl, qemu: qemu-ppc64 }
           - { zig_target: powerpc64le-linux-musl, qemu: qemu-ppc64le }
           - { zig_target: powerpc64le-linux-musl, qemu: qemu-ppc64le, zig_pic: -fPIE }
           - { zig_target: x86_64-linux-gnu.2.3.4 }
@@ -84,9 +84,6 @@ jobs:
         run: |
           rev=$(git rev-parse --short=7 HEAD)
           echo "UPX_GITREV_SHORT=$rev" >> $GITHUB_ENV
-          # update ZIG_TARGET (i386 => x86)
-          ZIG_TARGET=${ZIG_TARGET/i386-/x86-}
-          echo "ZIG_TARGET=$ZIG_TARGET" >> $GITHUB_ENV
           # install zig; note that ~/.local/bin is included in the default $PATH on Ubuntu
           mkdir -p -v ~/.local/bin
           cd ~/.local/bin
@@ -99,12 +96,26 @@ jobs:
           #echo "PATH=$PATH" && which zig
           echo -n 'zig version: '; zig version
           # create wrapper scripts (needed for CMake)
-          echo -e '#!/bin/sh\nexec zig ar "$@"' > zig-ar
-          echo -e '#!/bin/sh\nexec zig cc  -target $ZIG_TARGET $ZIG_PIC $ZIG_FLAGS $ZIG_CPPFLAGS $ZIG_CFLAGS   "$@"' > zig-cc
-          echo -e '#!/bin/sh\nexec zig c++ -target $ZIG_TARGET $ZIG_PIC $ZIG_FLAGS $ZIG_CPPFLAGS $ZIG_CXXFLAGS "$@"' > zig-cxx
-          echo -e '#!/bin/sh\nexec zig ranlib "$@"' > zig-ranlib
+          log=
+          log='set -x\n'
+          echo -e '#!/bin/sh\n'$log'exec zig ar "$@"' > zig-ar
+          echo -e '#!/bin/sh\n'$log'exec zig cc  -target $ZIG_TARGET $ZIG_PIC $ZIG_FLAGS $ZIG_CPPFLAGS $ZIG_CFLAGS   "$@"' > zig-cc
+          echo -e '#!/bin/sh\n'$log'exec zig c++ -target $ZIG_TARGET $ZIG_PIC $ZIG_FLAGS $ZIG_CPPFLAGS $ZIG_CXXFLAGS "$@"' > zig-cxx
+          echo -e '#!/bin/sh\n'$log'exec zig ranlib "$@"' > zig-ranlib
           chmod +x zig-ar zig-cc zig-cxx zig-ranlib
           ls -la; head zig-ar zig-cc zig-cxx zig-ranlib
+          # update ZIG_TARGET
+          ZIG_TARGET=${ZIG_TARGET/i386-/x86-}  # i386 => x86
+          ZIG_TARGET=${ZIG_TARGET/muslsf/musl} # muslsf => musl
+          echo "ZIG_TARGET=$ZIG_TARGET" >> $GITHUB_ENV
+          # -fPIE is for compilation only => also use the correct linker flag "-pie"
+          # INFO: it seems the zig driver does handle this automatically(??), so not really needed
+          if test "X$ZIG_PIC" = "X-fPIE"; then true;
+            echo "ZIG_FLAGS=$ZIG_FLAGS --start-no-unused-arguments -pie --end-no-unused-arguments" >> $GITHUB_ENV
+          fi
+      - run: set -x; zig version; zig-cc --version; zig-cxx --version
+      - run: zig-cc  -E -x c   -dM /dev/null # list predefined macros for C
+      - run: zig-cxx -E -x c++ -dM /dev/null # list predefined macros for C++
       - name: ${{ format('Build Release with zig-cc -target {0} {1}', env.ZIG_TARGET, env.ZIG_PIC) }}
         run: |
           make UPX_XTARGET=zig/${ZIG_TARGET}${ZIG_PIC} xtarget/release \
