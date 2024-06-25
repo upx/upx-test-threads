@@ -113,7 +113,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-11, run_fs_test: false } # macos-11 does not have "readlink -f"
+          # { os: macos-11, run_fs_test: false } # macos-11 is EOL; macos-11 does not have "readlink -f"
           - { os: macos-12, run_fs_test: true }
           - { os: macos-13, run_fs_test: true }
           - { os: macos-14, run_fs_test: true }
@@ -140,7 +140,7 @@ jobs:
       - name: 'Build by-hand with zsh'
         run: 'top_srcdir="$PWD/upx with space" zsh "./upx with space/misc/scripts/build_upx_by_hand.sh"'
       - name: 'Run file system test suite'
-        if: ${{ matrix.run_fs_test }}
+        if: ${{ matrix.run_fs_test }} # need "readlink -f"
         run: |
           testsuite="$(readlink -fn "upx with space"/misc/testsuite/test_symlinks.sh)"
           cd "upx with space"/build/by-hand

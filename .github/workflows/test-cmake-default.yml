@@ -128,6 +128,7 @@ jobs:
       - name: 'Check out code'
         uses: actions/checkout@v4
         with: { submodules: true }
+      - run: set -x; xcode-select -p || true; xcodebuild -version || true
       - name: 'Config, build, test and install'
         run: |
           cmake -S . -B build/default -G Xcode
