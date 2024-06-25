@@ -24,38 +24,66 @@ jobs:
           - container: alpine:3.18                  # clang-16
           - container: alpine:3.19                  # clang-17
           - container: alpine:3.20                  # clang-17
-          - container: alpine:edge                  # clang-17
+          - container: alpine:edge                  # clang-18
+          - container: archlinux:latest             # clang-17
           - container: chimeralinux/chimera:latest  # clang-18; uses libc++ instead of libstdc++
-          - container: fedora:rawhide               # clang-18
+          - container: debian:unstable-slim         # clang-16
+          - container: fedora:40                    # clang-18
+          # container: fedora:rawhide               # clang-18 # container currently broken on GitHub Actions
+          - container: opensuse/tumbleweed:latest   # clang-18
+          - container: ubuntu:24.04                 # clang-18
           - container: i386/alpine:3.16             # clang-13
           - container: i386/alpine:3.17             # clang-15
           - container: i386/alpine:3.18             # clang-16
           - container: i386/alpine:3.19             # clang-17
           - container: i386/alpine:3.20             # clang-17
-          - container: i386/alpine:edge             # clang-17
+          - container: i386/alpine:edge             # clang-18
+          - container: i386/debian:unstable-slim    # clang-16
     name: ${{ format('clang-analyzer {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
         run: |
-          if test -f /etc/fedora-release; then
-            dnf update -y
-            dnf install -y clang clang-analyzer cmake git make time
+          if test -f /etc/alpine-release; then
+            apk update && apk upgrade
+            apk add bash ca-certificates git
+            apk add clang clang-analyzer clang-extra-tools cmake g++ make python3
           elif test -f /etc/chimera-release; then
             apk update && apk upgrade
-            apk add clang clang-analyzer cmake git gmake
+            apk add bash ca-certificates git
+            apk add bsdtar clang clang-analyzer clang-tools-extra cmake gmake python shadow
             ln -s -v gmake /usr/bin/make
-          else
-            apk update && apk upgrade
-            apk add clang clang-analyzer cmake g++ git make
+          elif test -f /etc/fedora-release; then
+            dnf update -y
+            dnf install -y bash ca-certificates git
+            dnf install -y clang clang-analyzer clang-tools-extra cmake diffutils findutils gcc-c++ make python3 time
+          elif test -f /etc/debian_version; then
+            apt-get update && apt-get upgrade -y
+            apt-get install -y --no-install-recommends bash ca-certificates git
+            apt-get install -y --no-install-recommends clang clang-format clang-tidy clang-tools cmake g++ make time
+          elif test -f /usr/bin/zypper; then # opensuse
+            zypper refresh && zypper update -y
+            zypper install -y bash ca-certificates git
+            zypper install -y clang clang-tools cmake diffutils findutils gawk gcc-c++ make time
+          elif test -f /usr/bin/pacman; then # archlinux
+            pacman -Syu --noconfirm
+            pacman -S --needed --noconfirm bash ca-certificates git
+            pacman -S --needed --noconfirm clang cmake diffutils gcc make python3 time
           fi
-          true
+          # check packages; TODO: file, size
+          for f in awk cmp diff env false find grep id pwd readlink realpath sed sha256sum tar test time tr true uname xargs; do command -v $f; done
+          for f in clang clang++ clang-format clang-tidy scan-build; do command -v $f; done
+          for f in bash cmake git make perl python3; do command -v $f; $f --version; done
+          env time pwd; env time true; time env pwd; time env true
       - name: ${{ format('Check out UPX {0} source code', github.ref_name) }}
         run: |
           git config --global --add safe.directory '*' # needed when running in a container
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
           git submodule update --init
+      - run: set -x; clang --version; clang++ --version
+      - run: clang   -E -x c   -dM /dev/null
+      - run: clang++ -E -x c++ -dM /dev/null
       - name: Perform clang-analyzer scan-build Analysis Debug
         run: make build/analyze/clang-analyzer/debug
       - name: Perform clang-analyzer scan-build Analysis Release
