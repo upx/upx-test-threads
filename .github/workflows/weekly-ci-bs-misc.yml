@@ -85,14 +85,13 @@ jobs:
             *)     exit 99 ;;
           esac
           echo -e "CC=$CC\nCXX=$CXX" >> $GITHUB_ENV
-      - run: $CC --version; $CXX --version
+      - run: set -x; $CC --version; $CXX --version
+      - run: $CC  -E -x c   -dM /dev/null
+      - run: $CXX -E -x c++ -dM /dev/null
       - run: make build/debug+test
       - run: make build/release+test
       - name: Show summary
-        run: |
-          ls -l build/*/upx
-          size build/*/upx
-          file build/*/upx
+        run: ls -l build/*/upx && size build/*/upx && file build/*/upx
 
   # test misc/make/Makefile-extra.mk targets
   BS2: # uses cmake + make
@@ -101,8 +100,10 @@ jobs:
       fail-fast: false
       matrix:
         container:
+          - alpine:3.19
           - alpine:3.20
           - alpine:edge
+          - i386/alpine:3.19
           - i386/alpine:3.20
           - i386/alpine:edge
         cc:
@@ -117,7 +118,7 @@ jobs:
     env:
       C: ${{ matrix.cc }}
       UPX_CMAKE_CONFIG_FLAGS: -G "${{ matrix.cmake_generator }}"
-      ##UPX_CONFIG_DISABLE_EXHAUSTIVE_TESTS: 'ON' # because we are running many builds
+      #UPX_CONFIG_DISABLE_EXHAUSTIVE_TESTS: 'ON' # because we are running many builds
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
         run: apk update && apk upgrade && apk add clang cmake file g++ git make ninja-is-really-ninja
@@ -127,6 +128,7 @@ jobs:
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
           git submodule update --init
       - run: make build/extra/${C}/all+test
+      - run: make build/extra/${C}-lto-auto/all+test
       - run: make build/extra/${C}-static/all+test
       - run: make build/extra/${C}-static-lto/all+test
       - run: make build/extra/${C}-static-pie/all+test
