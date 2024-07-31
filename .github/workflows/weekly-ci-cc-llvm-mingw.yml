@@ -16,6 +16,7 @@ env:
   UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
+  ZSTD_CLEVEL: 9
 
 jobs:
   job-llvm-mingw: # uses cmake + make
@@ -42,6 +43,12 @@ jobs:
           - name: llvm-mingw-20240619-ucrt
             llvm_version: 18.1.8
             url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64.tar.xz'
+          - name: llvm-mingw-20240726-msvcrt
+            llvm_version: 19.1.0rc1
+            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240726/llvm-mingw-20240726-msvcrt-ubuntu-20.04-x86_64.tar.xz'
+          - name: llvm-mingw-20240726-ucrt
+            llvm_version: 19.1.0rc1
+            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240726/llvm-mingw-20240726-ucrt-ubuntu-20.04-x86_64.tar.xz'
     name: ${{ format('{0} {1}', matrix.name, matrix.llvm_version) }}
     runs-on: ubuntu-latest
     container: ubuntu:24.04
@@ -53,7 +60,7 @@ jobs:
         run: |
           dpkg --add-architecture i386
           apt-get update && apt-get upgrade -y
-          apt-get install -y --no-install-recommends bash ca-certificates cmake curl file git make tar time wine wine32:i386 wine64 xz-utils
+          apt-get install -y --no-install-recommends bash ca-certificates cmake curl file git make tar time util-linux wine wine32:i386 wine64 xz-utils zstd
           git config --global --add safe.directory '*' # needed when running in a container
           ls -l /usr/bin/wine*
           mkdir -p -v ~/.wine
@@ -78,48 +85,45 @@ jobs:
           export CC="aarch64-w64-mingw32-clang $xflags" CXX="aarch64-w64-mingw32-clang++ $xflags"
           make UPX_XTARGET=llvm-mingw/aarch64-w64-mingw32-clang xtarget/all
       - name: 'Build clang aarch64 static'
-        if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="aarch64-w64-mingw32-clang -static $xflags" CXX="aarch64-w64-mingw32-clang++ -static $xflags"
+          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=llvm-mingw/aarch64-w64-mingw32-clang-static xtarget/all
 
       - name: 'Build clang armv7'
-        if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="armv7-w64-mingw32-clang $xflags" CXX="armv7-w64-mingw32-clang++ $xflags"
           make UPX_XTARGET=llvm-mingw/armv7-w64-mingw32-clang xtarget/all
       - name: 'Build clang armv7 static'
-        if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="armv7-w64-mingw32-clang -static $xflags" CXX="armv7-w64-mingw32-clang++ -static $xflags"
+          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=llvm-mingw/armv7-w64-mingw32-clang-static xtarget/all
 
       - name: 'Build clang i686'
-        if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="i686-w64-mingw32-clang $xflags" CXX="i686-w64-mingw32-clang++ $xflags"
           export CMAKE_CROSSCOMPILING_EMULATOR=wine
-          export UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON # TODO FIXME
+          export UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON # TODO FIXME: UPX problem
           make UPX_XTARGET=llvm-mingw/i686-w64-mingw32-clang xtarget/all
       - name: 'Build clang i686 static'
-        if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="i686-w64-mingw32-clang -static $xflags" CXX="i686-w64-mingw32-clang++ -static $xflags"
           export CMAKE_CROSSCOMPILING_EMULATOR=wine
-          export UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON # TODO FIXME
+          export UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON # TODO FIXME: UPX problem
+          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=llvm-mingw/i686-w64-mingw32-clang-static xtarget/all
 
       - name: 'Build clang x86_64'
-        if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="x86_64-w64-mingw32-clang $xflags" CXX="x86_64-w64-mingw32-clang++ $xflags"
           export CMAKE_CROSSCOMPILING_EMULATOR=wine
           make UPX_XTARGET=llvm-mingw/x86_64-w64-mingw32-clang xtarget/all
       - name: 'Build clang x86_64 static'
-        if: success() || failure() # run this step even if the previous step failed
         run: |
           export CC="x86_64-w64-mingw32-clang -static $xflags" CXX="x86_64-w64-mingw32-clang++ -static $xflags"
           export CMAKE_CROSSCOMPILING_EMULATOR=wine
+          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=llvm-mingw/x86_64-w64-mingw32-clang-static xtarget/all
 
       - name: 'Make artifact'
@@ -130,13 +134,22 @@ jobs:
           size  build/*/*/*/upx.exe || true
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-${{ matrix.name }}-${{ matrix.llvm_version }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
+          for f in build/*/*/*/upx.exe; do
+            d="${f%/*}" # dirname
+            DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/$d"         cmake --install $d
+            DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/$d"         cmake --install $d --prefix /temp/local/upx
+            DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/$d" cmake --install $d --strip
+            DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/$d" cmake --install $d --strip --prefix /temp/local/upx
+            cmake --install $d --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefix/$d"
+            cmake --install $d --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefixAndStrip/$d" --strip
+          done
           (cd build && cp -ai --parents */*/*/upx.exe "../tmp/artifact/$N")
+          if command -v hardlink >/dev/null; then (cd "tmp/artifact/$N" && hardlink .) fi
+          (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la)
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.artifact_name }}
-          path: tmp/artifact
+        with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
 
       - name: 'Run ctest tests i686 static with Wine'
         run: make UPX_XTARGET=llvm-mingw/i686-w64-mingw32-clang-static xtarget/all+test

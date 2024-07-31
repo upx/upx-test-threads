@@ -69,6 +69,8 @@ jobs:
           - -DUPX_CONFIG_USE_STABLE_SORT
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
+    env:
+      UPX_CONFIG_DISABLE_SHARED_LIBS: 'ON'
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
         run: apk update && apk upgrade && apk add clang cmake file g++ git make

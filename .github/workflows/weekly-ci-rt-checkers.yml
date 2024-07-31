@@ -19,6 +19,7 @@ env:
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_CONFIG_EXPECT_THREADS: 'ON'
+  ZSTD_CLEVEL: 9
 
 jobs:
   job-runtime-checkers: # uses cmake + make
@@ -109,7 +110,7 @@ jobs:
         run: |
           uname -a; pwd; id; umask
           apk update && apk upgrade
-          apk add bash clang cmake compiler-rt coreutils g++ git make qemu-i386 qemu-x86_64 tar valgrind
+          apk add bash clang cmake compiler-rt coreutils g++ git make qemu-i386 qemu-x86_64 tar util-linux valgrind zstd
           git config --global --add safe.directory '*' # needed when running in a container
       - name: ${{ format('Check out UPX {0} source code', github.ref_name) }}
         run: |
@@ -121,17 +122,19 @@ jobs:
         run: |
           flags="-static -fno-omit-frame-pointer"
           export CC="clang $flags" CXX="clang++ $flags"
+          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=xtarget/clang-static xtarget/$release
       - name: 'Build clang-static-pie'
         run: |
           flags="-static-pie -fPIE -fno-omit-frame-pointer -Wno-unused-command-line-argument"
           export CC="clang $flags" CXX="clang++ $flags"
+          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=xtarget/clang-static-pie xtarget/$release
       - name: 'Build clang-asan'
         if: ${{ !matrix.skip_asan }}
         run: |
           # unfortunately ASAN does not support static linking
-          flags="-fPIE -fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=undefined -fno-omit-frame-pointer"
+          flags="-fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=undefined -fno-omit-frame-pointer"
           export CC="clang $flags" CXX="clang++ $flags"
           # info: zstd is not clean w.r.t. undefined pointer-compare/pointer-subtract
           export UPX_CONFIG_EXTRA_COMPILE_OPTIONS_ZSTD="-fno-sanitize=pointer-compare -fno-sanitize=pointer-subtract"
@@ -140,7 +143,7 @@ jobs:
         if: ${{ !matrix.skip_msan }}
         run: |
           # unfortunately MSAN does not support static linking
-          flags="-fPIE -fsanitize=memory -fsanitize=undefined -fno-omit-frame-pointer -DDOCTEST_CONFIG_DISABLE=1"
+          flags="-fsanitize=memory -fsanitize=undefined -fno-omit-frame-pointer -DDOCTEST_CONFIG_DISABLE=1"
           export CC="clang $flags" CXX="clang++ $flags"
           make UPX_XTARGET=xtarget/clang-msan xtarget/$release
 
@@ -149,14 +152,13 @@ jobs:
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-runtime-checkers-${{ matrix.container }}-${{ matrix.release }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
           (cd build && cp -ai --parents */*/*/upx "../tmp/artifact/$N")
-          (cd tmp/artifact && tar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
+          if command -v hardlink >/dev/null; then (cd "tmp/artifact/$N" && hardlink .) fi
+          (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la)
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         if: ${{ !startsWith(matrix.container, 'i386/') }} # i386: missing nodejs on host
         uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.artifact_name }}
-          path: tmp/artifact
+        with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
 
       - name: 'Run ctest tests clang-static'
         run: 'make build/xtarget/clang-static/$release+test'

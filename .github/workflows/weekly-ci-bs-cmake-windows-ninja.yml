@@ -13,6 +13,7 @@ env:
   UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_CMAKE_BUILD_FLAGS: --verbose
   UPX_CMAKE_CONFIG_FLAGS: -G Ninja -Wdev --warn-uninitialized
+  ZSTD_CLEVEL: 9
 
 jobs:
   job-cmake-windows-ninja: # uses cmake + ninja
@@ -57,7 +58,7 @@ jobs:
         shell: bash
         run: |
           command -v ninja >/dev/null || choco install -y --no-progress ninja
-          xtarget="${{ matrix.os }}-ninja-${{ matrix.cc }}-${{ matrix.vsversion }}-${{ matrix.vsarch}}"
+          xtarget=$(echo "${{ matrix.os }}-ninja-${{ matrix.cc }}-${{ matrix.vsversion }}-${{ matrix.vsarch}}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           echo "xtarget=$xtarget" >> $GITHUB_ENV
       - name: 'Build cmake Ninja Debug'
         shell: bash
@@ -72,18 +73,26 @@ jobs:
           make UPX_XTARGET=xtarget/$xtarget xtarget/release
           ls -l build/xtarget/$xtarget/release/upx.exe
           file  build/xtarget/$xtarget/release/upx.exe || true
+
       - name: 'Make artifact'
         shell: bash
         run: |
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-ninja-${xtarget}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
+          dirs="$xtarget/debug $xtarget/release"
+          for d in $dirs; do DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/$d"         cmake --install build/xtarget/$d; done
+          for d in $dirs; do DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/$d"         cmake --install build/xtarget/$d --prefix /temp/local/upx; done
+          for d in $dirs; do DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/$d" cmake --install build/xtarget/$d --strip; done
+          for d in $dirs; do DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/$d" cmake --install build/xtarget/$d --strip --prefix /temp/local/upx; done
+          for d in $dirs; do cmake --install build/xtarget/$d --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefix/$d"; done
+          for d in $dirs; do cmake --install build/xtarget/$d --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefixAndStrip/$d" --strip; done
           (cd build && cp -ai --parents xtarget/*/*/upx.exe "../tmp/artifact/$N")
+          (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la)
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.artifact_name }}
-          path: tmp/artifact
+        with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
+
       - name: 'Run ctest tests'
         if: ${{ matrix.vsarch != 'amd64_arm64' }}
         shell: bash
