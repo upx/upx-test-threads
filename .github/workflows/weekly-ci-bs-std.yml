@@ -51,7 +51,7 @@ jobs:
             xflags:    -flto=auto
           # C++23
           - cxx:       clang++-17 -std=gnu++23
-            cc:        clang-17 -std=gnu2x
+            cc:        clang-17 -std=gnu2x -Wno-constant-logical-operand
             container: alpine:3.20
             packages:  clang17
           - cxx:       clang++-18 -std=gnu++23
