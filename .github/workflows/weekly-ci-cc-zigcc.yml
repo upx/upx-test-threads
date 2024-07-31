@@ -16,8 +16,8 @@ env:
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
-  # 2024-06-07
-  ZIG_DIST_VERSION: 0.13.0
+  # 2024-07-31
+  ZIG_DIST_VERSION: 0.14.0-dev.737+30b4a87db
 
 jobs:
   job-linux-zigcc: # uses cmake + make
@@ -36,8 +36,9 @@ jobs:
           - { zig_target: aarch64-macos.12.0-none }
           - { zig_target: aarch64-macos.13.0-none }
           - { zig_target: aarch64-windows-gnu }
-          - { zig_target: arm-linux-musleabihf, qemu: qemu-arm }
-          - { zig_target: arm-linux-musleabihf, qemu: qemu-arm, zig_pic: -fPIE }
+          # clang/zig bug TODO later: need -mcpu=cortex_a5 because of problems when using -save-temps
+          - { zig_target: arm-linux-musleabihf, zig_flags: -mcpu=cortex_a5, qemu: qemu-arm }
+          - { zig_target: arm-linux-musleabihf, zig_flags: -mcpu=cortex_a5, qemu: qemu-arm, zig_pic: -fPIE }
           - { zig_target: i386-linux-gnu.2.3.4, zig_flags: -march=i586 }
           - { zig_target: i386-linux-musl, qemu: qemu-i386 }
           - { zig_target: i386-linux-musl, qemu: qemu-i386, zig_pic: -fPIE }
@@ -60,7 +61,7 @@ jobs:
           - { zig_target: x86_64-windows-gnu }
     env:
       # zig is currently missing winpthreads; see https://github.com/ziglang/zig/issues/10989
-      UPX_CONFIG_EXPECT_THREADS: ${{ contains(matrix.zig_target, '-windows-') && 'OFF' || 'ON' }}
+      UPX_CONFIG_EXPECT_THREADS: ${{ contains(matrix.zig_target, '-windows') && 'OFF' || 'ON' }}
       # for zig-cc wrapper scripts (see below):
       ZIG_CPPFLAGS: -DUPX_DOCTEST_CONFIG_MULTITHREADING
       ZIG_FLAGS: ${{ matrix.zig_flags }}
@@ -84,6 +85,9 @@ jobs:
         run: |
           rev=$(git rev-parse --short=7 HEAD)
           echo "UPX_GITREV_SHORT=$rev" >> $GITHUB_ENV
+          if [[ "${{ matrix.zig_target }}" == i386-linux-gnu.2.3.4 ]]; then
+            echo "UPX_CONFIG_DISABLE_SHARED_LIBS=ON" >> $GITHUB_ENV # zig problem
+          fi
           # install zig; note that ~/.local/bin is included in the default $PATH on Ubuntu
           mkdir -p -v ~/.local/bin
           cd ~/.local/bin
@@ -112,6 +116,7 @@ jobs:
           # INFO: it seems the zig driver does handle this automatically(??), so not really needed
           if test "X$ZIG_PIC" = "X-fPIE"; then true;
             echo "ZIG_FLAGS=$ZIG_FLAGS --start-no-unused-arguments -pie --end-no-unused-arguments" >> $GITHUB_ENV
+            echo "UPX_CONFIG_DISABLE_SHARED_LIBS=ON" >> $GITHUB_ENV # conflicts with ZIG_PIC/ZIG_FLAGS
           fi
       - run: set -x; zig version; zig-cc --version; zig-cxx --version
       - run: zig-cc  -E -x c   -dM /dev/null # list predefined macros for C
@@ -131,6 +136,10 @@ jobs:
         run: |
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-zigcc-${{ matrix.zig_target }}${ZIG_PIC}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
+          if [[ "${{ matrix.zig_target }}" == *-linux* ]]; then
+            dirs="${ZIG_TARGET}${ZIG_PIC}/debug ${ZIG_TARGET}${ZIG_PIC}/release"
+            for d in $dirs; do DESTDIR="$PWD/tmp/artifact/$N/Install/$d" cmake --install build/zig/$d; done
+          fi
           (cd build && shopt -s nullglob && cp -ai --parents */upx{,.exe} */*/*/upx{,.exe} "../tmp/artifact/$N")
           (cd tmp/artifact && tar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
           echo "artifact_name=$N" >> $GITHUB_ENV

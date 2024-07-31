@@ -20,6 +20,7 @@ env:
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
+  UPX_CONFIG_DISABLE_SHARED_LIBS: 'ON'
   UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
@@ -136,13 +137,13 @@ jobs:
         run: |
           export UPX_CONFIG_DISABLE_C_STANDARD=ON UPX_CONFIG_DISABLE_CXX_STANDARD=ON
           a=gnu23; b=gnu++23; if test "X${{ matrix.use_cxx2b }}" = X1; then a=gnu2x; b=gnu++2b; fi
-          make -C "upx with space" UPX_XTARGET=xtarget/clang-static-cxx23 CC="clang -static -std=$a" CXX="clang++ -static -std=$b"
+          make -C "upx with space" UPX_XTARGET=xtarget/clang-static-cxx23 CC="clang -static -std=$a -Wno-constant-logical-operand" CXX="clang++ -static -std=$b"
       - name: ${{ format('Build clang C++23 Debug with {0}', env.clang_package) }}
         if: matrix.use_cxx23 || matrix.use_cxx2b
         run: |
           export UPX_CONFIG_DISABLE_C_STANDARD=ON UPX_CONFIG_DISABLE_CXX_STANDARD=ON
           a=gnu23; b=gnu++23; if test "X${{ matrix.use_cxx2b }}" = X1; then a=gnu2x; b=gnu++2b; fi
-          make -C "upx with space" UPX_XTARGET=xtarget/clang-static-cxx23 CC="clang -static -std=$a" CXX="clang++ -static -std=$b" xtarget/debug
+          make -C "upx with space" UPX_XTARGET=xtarget/clang-static-cxx23 CC="clang -static -std=$a -Wno-constant-logical-operand" CXX="clang++ -static -std=$b" xtarget/debug
       - name: ${{ format('Build gcc C++23 Release with {0}', env.gcc_package) }}
         if: matrix.use_cxx23 || matrix.use_cxx2b
         run: |
