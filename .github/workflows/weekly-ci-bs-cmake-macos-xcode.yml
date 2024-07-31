@@ -12,6 +12,9 @@ env:
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_CONFIG_EXPECT_THREADS: 'ON'
+  UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
+  UPX_DEBUG_TEST_LIBC_QSORT: 1
+  ZSTD_CLEVEL: 9
 
 jobs:
   job-cmake-macos-xcode: # uses cmake + xcodebuild
@@ -20,51 +23,76 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # { os: macos-11, run_test: true } # macos-11 is EOL
-          - { os: macos-12, run_test: true }
-          - { os: macos-13, run_test: true }
-          - { os: macos-14, run_test: true }
-    name: ${{ format('{0} cmake Xcode', matrix.os) }}
+          - { os: macos-12 }
+          - { os: macos-13 }
+          - { os: macos-13, xcode_version: 14.3.1 }
+          - { os: macos-14 }
+    name: ${{ format('cmake Xcode {0} {1}{2}', matrix.os, matrix.xcode_version && 'xcode-' || '',  matrix.xcode_version) }}
     runs-on: ${{ matrix.os }}
+    env:
+      subdir: xcode
     steps:
-      - name: 'Check out code'
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: ${{ matrix.xcode_version }}
+        with: { xcode-version: '${{ matrix.xcode_version }}' }
+      - name: Check out code
         uses: actions/checkout@v4
         with: { submodules: true }
-      - name: 'Set vars'
+      - name: Install brew packages
         run: |
+          test -z "$HOMEBREW_PREFIX" && HOMEBREW_PREFIX="$(brew --prefix)"
+          echo "HOMEBREW_PREFIX=$HOMEBREW_PREFIX" >> $GITHUB_ENV
+          packages="util-linux"
+          if ! brew install $packages; then echo "===== brew update" && brew update && brew install $packages; fi
           echo "UPX_DEBUG_FORCE_PACK_MACOS=1" >> $GITHUB_ENV
           case "${{ matrix.os }}" in
             # TODO FIXME: UPX on macos-13+ is broken => disable run-packed for now
             macos-13 | macos-14) echo "UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON" >> $GITHUB_ENV ;;
           esac
       - run: set -x; xcode-select -p || true; xcodebuild -version || true
-      # { name: 'Config cmake Xcode',        run: 'cmake -S . -B build/xcode -G Xcode -DUPX_CONFIG_DISABLE_SELF_PACK_TEST=${UPX_CONFIG_DISABLE_SELF_PACK_TEST}' }
-      - { name: 'Config cmake Xcode',        run: 'bash -x ./misc/scripts/run_cmake_config.sh -S . -B build/xcode -G Xcode'}
-      - { name: 'Build cmake Xcode default', run: 'cmake --build build/xcode --parallel --verbose' }
-      - { name: 'Build cmake Xcode Debug',   run: 'cmake --build build/xcode --parallel --verbose --config Debug' }
-      - { name: 'Build cmake Xcode Release', run: 'cmake --build build/xcode --parallel --verbose --config Release' }
-      - name: 'Make artifact'
+      - run: set -x; clang --version; clang++ --version
+      - run: clang   -E -x c   -dM /dev/null
+      - run: clang++ -E -x c++ -dM /dev/null
+      - { name: 'Config cmake Xcode',        run: 'bash -x ./misc/scripts/run_cmake_config.sh -S . -B build/$subdir -G Xcode'}
+      - { name: 'Build cmake Xcode default', run: 'cmake --build build/$subdir --parallel --verbose' }
+      - { name: 'Build cmake Xcode Debug',   run: 'cmake --build build/$subdir --parallel --verbose --config Debug' }
+      - { name: 'Build cmake Xcode Release', run: 'cmake --build build/$subdir --parallel --verbose --config Release' }
+
+      - name: Make artifact
         run: |
-          N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-xcode-${{ matrix.os }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
+          X="${{ matrix.xcode_version }}"; test -n "$X" && X="-xcode-$X"
+          N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-${subdir}-${{ matrix.os }}$X" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
+          DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/debug"           cmake --install build/$subdir --config Debug
+          DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/release"         cmake --install build/$subdir --config Release
+          DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/debug"           cmake --install build/$subdir --config Debug   --prefix /tmp/local/upx
+          DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/release"         cmake --install build/$subdir --config Release --prefix /tmp/local/upx
+          DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/debug"   cmake --install build/$subdir --config Debug   --strip
+          DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/release" cmake --install build/$subdir --config Release --strip
+          DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/debug"   cmake --install build/$subdir --config Debug   --strip --prefix /tmp/local/upx
+          DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/release" cmake --install build/$subdir --config Release --strip --prefix /tmp/local/upx
+          cmake --install build/$subdir --config Debug   --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefix/debug"
+          cmake --install build/$subdir --config Release --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefix/release"
+          cmake --install build/$subdir --config Debug   --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefixAndStrip/debug"   --strip
+          cmake --install build/$subdir --config Release --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefixAndStrip/release" --strip
           (cd build && rsync -R -a */*/upx "../tmp/artifact/$N/")
-          (cd tmp/artifact && gtar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
+          hardlink="$HOMEBREW_PREFIX/opt/util-linux/bin/hardlink"
+          if test -f "$hardlink"; then (cd "tmp/artifact/$N" && "$hardlink" .) fi
+          (cd tmp/artifact && gtar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la)
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.artifact_name }}
-          path: tmp/artifact
-      - name: 'Run ctest tests'
-        if: ${{ matrix.run_test }}
+        with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
+
+      - name: Run ctest tests
         run: |
-          ./build/xcode/Debug/upx --sysinfo -v
-          ./build/xcode/Release/upx --sysinfo -v
-          ctest --test-dir build/xcode -C Debug
-          ctest --test-dir build/xcode -C Release
-      - name: 'Run install tests'
+          ./build/$subdir/Debug/upx --sysinfo -v
+          ./build/$subdir/Release/upx --sysinfo -v
+          ctest --test-dir build/$subdir -C Debug
+          ctest --test-dir build/$subdir -C Release
+      - name: Run install tests
         run: |
-          (cd build/xcode && DESTDIR=$PWD/Install-default cmake --install .)
-          (cd build/xcode && DESTDIR=$PWD/Install-debug   cmake --install . --config Debug)
-          (cd build/xcode && DESTDIR=$PWD/Install-release cmake --install . --config Release)
-          ls -l build/xcode/Install-*/usr/local/bin/upx
+          (cd build/$subdir && DESTDIR="$PWD/Install-default" cmake --install .)
+          (cd build/$subdir && DESTDIR="$PWD/Install-debug"   cmake --install . --config Debug)
+          (cd build/$subdir && DESTDIR="$PWD/Install-release" cmake --install . --config Release)
+          ls -l build/$subdir/Install-*/usr/local/bin/upx
