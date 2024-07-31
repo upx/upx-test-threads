@@ -14,6 +14,7 @@ env:
   UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
+  ZSTD_CLEVEL: 9
 
 jobs:
   job-alpine-mingw: # uses cmake + make
@@ -40,7 +41,7 @@ jobs:
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
         run: |
-          apk update && apk upgrade && apk add bash cmake coreutils file git make tar xz
+          apk update && apk upgrade && apk add bash cmake coreutils file git make tar util-linux xz zstd
           apk add mingw-w64-gcc
           test "${{ matrix.i686_mingw }}" = "true" && apk add i686-mingw-w64-gcc
           true
@@ -78,19 +79,28 @@ jobs:
             *:3.1[12]) X="CMAKE_AR=/usr/bin/x86_64-w64-mingw32-ar" ;;
           esac
           make build/extra/cross-windows-mingw64/release $X
-      - name: 'Make artifact'
+
+      - name: Make artifact
         shell: bash
         run: |
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-alpine-mingw-${{ matrix.container }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
           mkdir -p "tmp/artifact/$N"
+          for f in build/*/*/*/upx.exe; do
+            d="${f%/*}" # dirname
+            DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/$d"         cmake --install $d
+            DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdir/$d"         cmake --install $d --prefix /temp/local/upx
+            DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/$d" cmake --install $d --strip
+            DESTDIR="$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithDestdirAndStrip/$d" cmake --install $d --strip --prefix /temp/local/upx
+            cmake --install $d --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefix/$d"
+            cmake --install $d --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefixAndStrip/$d" --strip
+          done
           (cd build && shopt -s nullglob && cp -ai --parents */upx{,.exe} */*/*/upx{,.exe} "../tmp/artifact/$N")
-          (cd tmp/artifact && tar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
+          if command -v hardlink >/dev/null; then (cd "tmp/artifact/$N" && hardlink .) fi
+          (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la)
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.artifact_name }}
-          path: tmp/artifact
+        with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
 
       - name: ${{ format('Run test suite with Wine') }}
         if: ${{ matrix.wine }}
