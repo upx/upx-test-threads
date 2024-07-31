@@ -19,6 +19,8 @@ jobs:
     name: ${{ format('clang-static {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
+    env:
+      UPX_CONFIG_DISABLE_SHARED_LIBS: 'ON'
     steps:
       - name: ${{ format('Build clang {0}', matrix.container) }}
         run: |
@@ -44,6 +46,8 @@ jobs:
     name: ${{ format('gcc-static {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
+    env:
+      UPX_CONFIG_DISABLE_SHARED_LIBS: 'ON'
     steps:
       - name: ${{ format('Build gcc {0}', matrix.container) }}
         run: |
