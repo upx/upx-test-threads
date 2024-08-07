@@ -85,10 +85,20 @@ set_cmake_bool_vars() {
     done
 }
 
+if [[ "${emu[0]}" == *wine* ]]; then
+    set_cmake_bool_vars ON  UPX_CONFIG_HAVE_WORKING_BUILD_RPATH
+else
+    set_cmake_bool_vars OFF UPX_CONFIG_HAVE_WORKING_BUILD_RPATH
+fi
+
 #set -x
 files=()
 files+=( ./acx_naked_c ./acx_naked_x ./vendor/acx/naked_c ./vendor/acx/naked_x )
 files+=( ./acx_simple_c ./acx_simple_x ./vendor/acx/simple_c ./vendor/acx/simple_x )
+files+=( ./vendor/cmt/cmt_test_1_static ./vendor/cmt/cmt_test_2_static )
+if [[ $UPX_CONFIG_HAVE_WORKING_BUILD_RPATH == ON ]]; then
+    files+=( ./vendor/cmt/cmt_test_1_shared ./vendor/cmt/cmt_test_2_shared )
+fi
 for f in "${files[@]}"; do
     if [[ -f "$f" ]]; then
         echo "=== ACX: running $f ==="

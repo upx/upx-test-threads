@@ -153,6 +153,9 @@ if(NOT UPX_CONFIG_CMAKE_DISABLE_INSTALL AND CMAKE_INSTALL_PREFIX)
 endif()
 
 add_subdirectory(vendor/acx)
+if(${CMAKE_VERSION} VERSION_GREATER "3.4.99") # need cmake-3.5
+    add_subdirectory(vendor/cmt)
+endif()
 
 #***********************************************************************
 # common compilation flags
