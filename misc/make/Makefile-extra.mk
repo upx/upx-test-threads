@@ -310,6 +310,10 @@ build/analyze/clang-tidy-cmt/debug build/analyze/clang-tidy-cmt/release: $$(CLAN
 	$(RUN_CLANG_TIDY_WERROR) -config-file ./vendor/cmt/.clang-tidy /vendor/cmt/
 build/analyze/clang-tidy/debug build/analyze/clang-tidy/release: build/analyze/clang-tidy-cmt/$$(notdir $$@)
 
+build/analyze/clang-tidy-lzo/debug build/analyze/clang-tidy-lzo/release: $$(CLANG_TIDY_BUILD_BASE)/$$(notdir $$@) PHONY
+	$(RUN_CLANG_TIDY)        -config-file ./misc/analyze/clang-tidy/clang-tidy-lzo.yml  /vendor/lzo/
+build/analyze/clang-tidy/debug build/analyze/clang-tidy/release: build/analyze/clang-tidy-lzo/$$(notdir $$@)
+
 # OLD names [deprecated]
 build/extra/scan-build/debug:   build/analyze/clang-analyzer/debug PHONY
 build/extra/scan-build/release: build/analyze/clang-analyzer/release PHONY

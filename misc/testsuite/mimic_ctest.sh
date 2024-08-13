@@ -99,6 +99,7 @@ files+=( ./vendor/cmt/cmt_test_1_static ./vendor/cmt/cmt_test_2_static )
 if [[ $UPX_CONFIG_HAVE_WORKING_BUILD_RPATH == ON ]]; then
     files+=( ./vendor/cmt/cmt_test_1_shared ./vendor/cmt/cmt_test_2_shared )
 fi
+files+=( ./vendor/lzo/simple ./vendor/lzo/testmini )
 for f in "${files[@]}"; do
     if [[ -f "$f" ]]; then
         echo "=== ACX: running $f ==="
