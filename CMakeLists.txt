@@ -152,6 +152,8 @@ if(NOT UPX_CONFIG_CMAKE_DISABLE_INSTALL AND CMAKE_INSTALL_PREFIX)
     include(GNUInstallDirs)
 endif()
 
+add_subdirectory(vendor/acx)
+
 #***********************************************************************
 # common compilation flags
 #***********************************************************************
@@ -443,6 +445,34 @@ elseif(GNU_FRONTEND)
 endif()
 upx_add_target_extra_compile_options(${t} UPX_CONFIG_EXTRA_COMPILE_OPTIONS_UPX)
 
+add_executable(acx_naked_c vendor/acx/test/naked_c.c)
+add_executable(acx_naked_x vendor/acx/test/naked_x.cpp)
+add_executable(acx_simple_c vendor/acx/test/simple_c.c)
+add_executable(acx_simple_x vendor/acx/test/simple_x.cpp)
+if(NOT UPX_CONFIG_DISABLE_CXX_STANDARD)
+    set_property(TARGET acx_naked_x PROPERTY CXX_STANDARD 17)
+    set_property(TARGET acx_simple_x PROPERTY CXX_STANDARD 17)
+endif()
+foreach(t IN ITEMS acx_naked_c acx_naked_x acx_simple_c acx_simple_x)
+    if(MSVC_FRONTEND)
+        target_compile_options(${t} PRIVATE ${warn_WN} ${warn_WX})
+    elseif(GNU_FRONTEND)
+        target_compile_options(${t} PRIVATE ${warn_Wall} -Wno-missing-declarations ${warn_Werror})
+        if(UPX_CONFIG_DISABLE_SAVE_TEMPS)
+        elseif(CMAKE_C_COMPILER_ID MATCHES "^Clang$" AND CMAKE_C_COMPILER_VERSION VERSION_LESS "3.7")
+        elseif(CMAKE_C_COMPILER_ID MATCHES "^GNU" AND CMAKE_C_COMPILER_VERSION VERSION_LESS "4.5")
+        else()
+            # -save-temps problem in parallel builds because
+            #   - add_subdirectory(acx) also uses -save-temps
+            #   - there is a basename clash with add_subdirectory(acx) files, e.g. simple_c
+            #   - save-temps files are not put into the object-destination subdirectory
+            #  => use -save-temps=obj
+            target_compile_options(${t} PRIVATE -save-temps=obj)
+        endif()
+    endif()
+    upx_sanitize_target(${t})
+endforeach()
+
 #***********************************************************************
 # test
 #   ctest
@@ -477,6 +507,17 @@ else()
     message(STATUS "CMAKE_CROSSCOMPILING = ON")
 endif()
 
+if(NOT CMAKE_CROSSCOMPILING OR CMAKE_CROSSCOMPILING_EMULATOR)
+    add_test(NAME acx_naked_c COMMAND acx_naked_c)
+    add_test(NAME acx_naked_x COMMAND acx_naked_x)
+    add_test(NAME acx_simple_c COMMAND acx_simple_c)
+    add_test(NAME acx_simple_x COMMAND acx_simple_x)
+    set_tests_properties(acx_naked_c PROPERTIES COST 1003)
+    set_tests_properties(acx_naked_x PROPERTIES COST 1002)
+    set_tests_properties(acx_simple_c PROPERTIES COST 1001)
+    set_tests_properties(acx_simple_x PROPERTIES COST 1000)
+endif()
+
 endif() # UPX_CONFIG_CMAKE_DISABLE_TEST
 
 #***********************************************************************
@@ -498,6 +539,7 @@ if(CMAKE_INSTALL_PREFIX AND DEFINED CMAKE_INSTALL_BINDIR AND DEFINED CMAKE_INSTA
         DESTINATION "${CMAKE_INSTALL_DOCDIR}"
     )
     install(FILES doc/upx.1 DESTINATION "${CMAKE_INSTALL_MANDIR}/man1")
+    install(TARGETS acx_naked_c acx_naked_x acx_simple_c acx_simple_x DESTINATION "${CMAKE_INSTALL_BINDIR}/acx")
 else()
     #message(FATAL_ERROR "ERROR: CMAKE_INSTALL_PREFIX is not defined")
     message(WARNING "WARNING: CMAKE_INSTALL_PREFIX is not defined")
