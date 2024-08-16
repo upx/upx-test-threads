@@ -85,6 +85,20 @@ set_cmake_bool_vars() {
     done
 }
 
+#set -x
+files=()
+files+=( ./acx_naked_c ./acx_naked_x ./vendor/acx/naked_c ./vendor/acx/naked_x )
+files+=( ./acx_simple_c ./acx_simple_x ./vendor/acx/simple_c ./vendor/acx/simple_x )
+for f in "${files[@]}"; do
+    if [[ -f "$f" ]]; then
+        echo "=== ACX: running $f ==="
+        "${emu[@]}" "$f"
+    elif [[ -f "$f.exe" ]]; then
+        echo "=== ACX: running $f.exe ==="
+        "${emu[@]}" "$f.exe"
+    fi
+done
+
 set -x
 set_cmake_bool_vars OFF UPX_CONFIG_DISABLE_SELF_PACK_TEST
 set_cmake_bool_vars OFF UPX_CONFIG_DISABLE_RUN_UNPACKED_TEST
