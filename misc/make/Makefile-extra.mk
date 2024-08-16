@@ -302,6 +302,10 @@ build/analyze/clang-tidy/debug build/analyze/clang-tidy/release: build/analyze/c
 build/analyze/clang-tidy/debug build/analyze/clang-tidy/release: build/analyze/clang-tidy-zstd/$$(notdir $$@)
 build/analyze/clang-tidy/debug build/analyze/clang-tidy/release: PHONY
 
+build/analyze/clang-tidy-acx/debug build/analyze/clang-tidy-acx/release: $$(CLANG_TIDY_BUILD_BASE)/$$(notdir $$@) PHONY
+	$(RUN_CLANG_TIDY_WERROR) -config-file ./vendor/acx/.clang-tidy /vendor/acx/
+build/analyze/clang-tidy/debug build/analyze/clang-tidy/release: build/analyze/clang-tidy-acx/$$(notdir $$@)
+
 # OLD names [deprecated]
 build/extra/scan-build/debug:   build/analyze/clang-analyzer/debug PHONY
 build/extra/scan-build/release: build/analyze/clang-analyzer/release PHONY
