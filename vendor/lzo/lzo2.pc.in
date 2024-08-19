@@ -17,5 +17,5 @@ Name: lzo2
 Version: @PACKAGE_VERSION@
 Description: LZO - a real-time data compression library
 URL: http://www.oberhumer.com/opensource/lzo/
-Cflags: -I${includedir}/lzo
+Cflags: -I${includedir}
 Libs: -L${libdir} -llzo2
