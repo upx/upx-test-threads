@@ -57,6 +57,12 @@
 //
 **************************************************************************/
 
+#if defined(__wasi__) // TODO later - wait for wasi-clocks proposal
+#include <time.h>
+#undef clock
+#define clock() 0
+#endif
+
 #if defined(LZO_WANT_ACCLIB_GETOPT) || !(defined(LZO_LIBC_ISOC90) || defined(LZO_LIBC_ISOC99))
 
 #include "examples/portab_a.h"
