@@ -21,7 +21,6 @@ env:
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_CONFIG_DISABLE_SHARED_LIBS: 'ON'
-  UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
   UPX_TESTSUITE_LEVEL: 4
@@ -45,8 +44,9 @@ jobs:
           - { container: 'alpine:3.18', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.19', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.20', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
-          - { container: 'alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
-          - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
+          - { container: 'alpine:3.21', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
+          - { container: 'alpine:edge', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
+          - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           # more 32-bit i386 versions, just for testing
           # { container: 'i386/alpine:3.9' }  # clang-5,  gcc-8; BROKEN: clang build fails
           - { container: 'i386/alpine:3.10' } # clang-8,  gcc-8
@@ -60,6 +60,7 @@ jobs:
           - { container: 'i386/alpine:3.18' } # clang-16, gcc-12
           - { container: 'i386/alpine:3.19' } # clang-17, gcc-13
           - { container: 'i386/alpine:3.20' } # clang-17, gcc-13
+          - { container: 'i386/alpine:3.21' } # clang-19, gcc-14
     name: ${{ format('container {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
