@@ -13,7 +13,6 @@ env:
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
-  UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
   ZSTD_CLEVEL: 9
@@ -43,12 +42,18 @@ jobs:
           - name: llvm-mingw-20240619-ucrt
             llvm_version: 18.1.8
             url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64.tar.xz'
-          - name: llvm-mingw-20240726-msvcrt
-            llvm_version: 19.1.0rc1
-            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240726/llvm-mingw-20240726-msvcrt-ubuntu-20.04-x86_64.tar.xz'
-          - name: llvm-mingw-20240726-ucrt
-            llvm_version: 19.1.0rc1
-            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20240726/llvm-mingw-20240726-ucrt-ubuntu-20.04-x86_64.tar.xz'
+          - name: llvm-mingw-20250114-msvcrt
+            llvm_version: 19.1.7
+            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20250114/llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64.tar.xz'
+          - name: llvm-mingw-20250114-ucrt
+            llvm_version: 19.1.7
+            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20250114/llvm-mingw-20250114-ucrt-ubuntu-20.04-x86_64.tar.xz'
+          - name: llvm-mingw-20250305-msvcrt
+            llvm_version: 20.1.0
+            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20250305/llvm-mingw-20250305-msvcrt-ubuntu-20.04-x86_64.tar.xz'
+          - name: llvm-mingw-20250305-ucrt
+            llvm_version: 20.1.0
+            url: 'https://github.com/mstorsjo/llvm-mingw/releases/download/20250305/llvm-mingw-20250305-ucrt-ubuntu-20.04-x86_64.tar.xz'
     name: ${{ format('{0} {1}', matrix.name, matrix.llvm_version) }}
     runs-on: ubuntu-latest
     container: ubuntu:24.04
@@ -87,7 +92,6 @@ jobs:
       - name: 'Build clang aarch64 static'
         run: |
           export CC="aarch64-w64-mingw32-clang -static $xflags" CXX="aarch64-w64-mingw32-clang++ -static $xflags"
-          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=llvm-mingw/aarch64-w64-mingw32-clang-static xtarget/all
 
       - name: 'Build clang armv7'
@@ -97,7 +101,6 @@ jobs:
       - name: 'Build clang armv7 static'
         run: |
           export CC="armv7-w64-mingw32-clang -static $xflags" CXX="armv7-w64-mingw32-clang++ -static $xflags"
-          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=llvm-mingw/armv7-w64-mingw32-clang-static xtarget/all
 
       - name: 'Build clang i686'
@@ -111,7 +114,6 @@ jobs:
           export CC="i686-w64-mingw32-clang -static $xflags" CXX="i686-w64-mingw32-clang++ -static $xflags"
           export CMAKE_CROSSCOMPILING_EMULATOR=wine
           export UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON # TODO FIXME: UPX problem
-          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=llvm-mingw/i686-w64-mingw32-clang-static xtarget/all
 
       - name: 'Build clang x86_64'
@@ -123,7 +125,6 @@ jobs:
         run: |
           export CC="x86_64-w64-mingw32-clang -static $xflags" CXX="x86_64-w64-mingw32-clang++ -static $xflags"
           export CMAKE_CROSSCOMPILING_EMULATOR=wine
-          export UPX_CONFIG_DISABLE_SHARED_LIBS=ON
           make UPX_XTARGET=llvm-mingw/x86_64-w64-mingw32-clang-static xtarget/all
 
       - name: 'Make artifact'
