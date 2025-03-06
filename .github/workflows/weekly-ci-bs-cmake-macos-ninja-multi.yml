@@ -1,7 +1,7 @@
 # Copyright (C) Markus Franz Xaver Johannes Oberhumer
 # BS BuildSystem: build on macOS with 'cmake -G "Ninja Multi-Config"'
 
-name: 'Weekly CI BS - cmake macOS Ninja Multi-Config'
+name: 'Weekly CI BS - cmake macOS Ninja-Multi'
 on:
   schedule: [cron: '08 1 * * 3'] # run weekly Wednesday 01:08 UTC
   workflow_dispatch:
@@ -10,8 +10,8 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
-  UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
-  UPX_CONFIG_EXPECT_THREADS: 'ON'
+  UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized # via run_cmake_config.sh
+  UPX_CONFIG_HAVE_WORKING_BUILD_RPATH: 'ON'
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
   ZSTD_CLEVEL: 9
@@ -23,10 +23,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-12 }
           - { os: macos-13 }
           - { os: macos-13, xcode_version: 14.3.1 }
           - { os: macos-14 }
+          - { os: macos-15 }
     name: ${{ format('cmake Xcode {0} {1}{2}', matrix.os, matrix.xcode_version && 'xcode-' || '',  matrix.xcode_version) }}
     runs-on: ${{ matrix.os }}
     env:
@@ -47,13 +47,13 @@ jobs:
           echo "UPX_DEBUG_FORCE_PACK_MACOS=1" >> $GITHUB_ENV
           case "${{ matrix.os }}" in
             # TODO FIXME: UPX on macos-13+ is broken => disable run-packed for now
-            macos-13 | macos-14) echo "UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON" >> $GITHUB_ENV ;;
+            macos-13 | macos-14 | macos-15) echo "UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON" >> $GITHUB_ENV ;;
           esac
       - run: set -x; xcode-select -p || true; xcodebuild -version || true
       - run: set -x; clang --version; clang++ --version
       - run: clang   -E -x c   -dM /dev/null
       - run: clang++ -E -x c++ -dM /dev/null
-      - { name: 'Config cmake Ninja',        run: 'bash -x ./misc/scripts/run_cmake_config.sh -S . -B build/$subdir -G "Ninja Multi-Config"'}
+      - { name: 'Config cmake Ninja',        run: 'bash -x ./misc/scripts/run_cmake_config.sh -S . -B build/$subdir -G "Ninja Multi-Config"' }
       - { name: 'Build cmake Ninja default', run: 'cmake --build build/$subdir --parallel --verbose' }
       - { name: 'Build cmake Ninja Debug',   run: 'cmake --build build/$subdir --parallel --verbose --config Debug' }
       - { name: 'Build cmake Ninja Release', run: 'cmake --build build/$subdir --parallel --verbose --config Release' }
@@ -88,8 +88,8 @@ jobs:
         run: |
           ./build/$subdir/Debug/upx --sysinfo -v
           ./build/$subdir/Release/upx --sysinfo -v
-          ctest --test-dir build/$subdir -C Debug
-          ctest --test-dir build/$subdir -C Release
+          ctest --test-dir build/$subdir --parallel ${CTEST_JOBS:-8} -C Debug
+          ctest --test-dir build/$subdir --parallel ${CTEST_JOBS:-8} -C Release
       - name: Run install tests
         run: |
           (cd build/$subdir && DESTDIR="$PWD/Install-default" cmake --install .)
