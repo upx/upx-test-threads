@@ -10,7 +10,6 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
-  UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_CMAKE_BUILD_FLAGS: --verbose
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
@@ -96,17 +95,18 @@ jobs:
         run: ls -l build/*/upx && size build/*/upx && file build/*/upx
 
   # test misc/make/Makefile-extra.mk targets
+  # NOTE: this job takes too long!!
   BS2: # uses cmake + make
     if: github.repository_owner == 'upx'
     strategy:
       fail-fast: false
       matrix:
         container:
-          - alpine:3.19
-          - alpine:3.20
+          # alpine:3.19 # WORKS, but save some CI time
+          - alpine:3.21
           - alpine:edge
-          - i386/alpine:3.19
-          - i386/alpine:3.20
+          # i386/alpine:3.19 # WORKS, but save some CI time
+          - i386/alpine:3.21
           - i386/alpine:edge
         cc:
           - clang
@@ -120,7 +120,8 @@ jobs:
     env:
       C: ${{ matrix.cc }}
       UPX_CMAKE_CONFIG_FLAGS: -G "${{ matrix.cmake_generator }}"
-      #UPX_CONFIG_DISABLE_EXHAUSTIVE_TESTS: 'ON' # because we are running many builds
+      UPX_CONFIG_DISABLE_EXHAUSTIVE_TESTS: 'ON' # because we are running many builds
+      UPX_CONFIG_HAVE_WORKING_BUILD_RPATH: 'ON'
     steps:
       - name: ${{ format('Install packages {0}', matrix.container) }}
         run: apk update && apk upgrade && apk add clang cmake file g++ git make ninja-is-really-ninja
@@ -136,6 +137,8 @@ jobs:
       - run: make build/extra/${C}-static-pie/all+test
       - run: make build/extra/${C}-std-cxx20/all+test
       - run: make build/extra/${C}-std-cxx23/all+test
+      - run: make build/extra/${C}-std-cxx26/all+test # need gcc-14
+        if: endsWith(matrix.container, ':edge') && matrix.cc == 'cc'
       - run: make build/extra/${C}-m32/all+test
         if: ${{ startsWith(matrix.container, 'i386/') }}
       - run: make build/extra/${C}-m64/all+test

@@ -10,7 +10,6 @@ env:
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
-  UPX_CONFIG_EXPECT_THREADS: 'ON'
 
 jobs:
   job-analyze-clang-analyzer: # uses cmake + make
@@ -24,12 +23,13 @@ jobs:
           - container: alpine:3.18                  # clang-16
           - container: alpine:3.19                  # clang-17
           - container: alpine:3.20                  # clang-17
-          - container: alpine:edge                  # clang-18
+          - container: alpine:3.21                  # clang-19
+          - container: alpine:edge                  # clang-19
           - container: archlinux:latest             # clang-17
           - container: chimeralinux/chimera:latest  # clang-18; uses libc++ instead of libstdc++
           - container: debian:unstable-slim         # clang-16
-          - container: fedora:40                    # clang-18
-          # container: fedora:rawhide               # clang-18 # container currently broken on GitHub Actions
+          - container: fedora:41                    # clang-18
+          - container: fedora:rawhide               # clang-18
           - container: opensuse/tumbleweed:latest   # clang-18
           - container: ubuntu:24.04                 # clang-18
           - container: i386/alpine:3.16             # clang-13
@@ -37,7 +37,8 @@ jobs:
           - container: i386/alpine:3.18             # clang-16
           - container: i386/alpine:3.19             # clang-17
           - container: i386/alpine:3.20             # clang-17
-          - container: i386/alpine:edge             # clang-18
+          - container: i386/alpine:3.21             # clang-19
+          - container: i386/alpine:edge             # clang-19
           - container: i386/debian:unstable-slim    # clang-16
     name: ${{ format('clang-analyzer {0}', matrix.container) }}
     runs-on: ubuntu-latest
@@ -53,7 +54,6 @@ jobs:
             apk update && apk upgrade
             apk add bash ca-certificates git
             apk add bsdtar clang clang-analyzer clang-tools-extra cmake gmake python shadow
-            ln -s -v gmake /usr/bin/make
           elif test -f /etc/fedora-release; then
             dnf update -y
             dnf install -y bash ca-certificates git
