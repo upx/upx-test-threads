@@ -49,6 +49,13 @@ jobs:
             release: release
             qemu: 'qemu-x86_64'
 
+          - container: 'alpine:3.21'
+            release: debug
+            qemu: 'qemu-x86_64'
+          - container: 'alpine:3.21'
+            release: release
+            qemu: 'qemu-x86_64'
+
           - container: 'alpine:edge'
             release: debug
             qemu: 'qemu-x86_64'
@@ -84,6 +91,17 @@ jobs:
             skip_asan: 1 # i386: ASAN not supported
             skip_msan: 1 # i386: MSAN not supported
           - container: 'i386/alpine:3.20'
+            release: release
+            qemu: 'qemu-i386'
+            skip_asan: 1 # i386: ASAN not supported
+            skip_msan: 1 # i386: MSAN not supported
+
+          - container: 'i386/alpine:3.21'
+            release: debug
+            qemu: 'qemu-i386'
+            skip_asan: 1 # i386: ASAN not supported
+            skip_msan: 1 # i386: MSAN not supported
+          - container: 'i386/alpine:3.21'
             release: release
             qemu: 'qemu-i386'
             skip_asan: 1 # i386: ASAN not supported
