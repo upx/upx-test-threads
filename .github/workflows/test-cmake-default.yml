@@ -91,7 +91,7 @@ jobs:
           cmake -S . -B build/default -G "Ninja Multi-Config"
           cmake --build build/default --parallel --verbose
           # multi-config: ctest NEEDS a config
-          ctest --test-dir build/default -C Release --parallel 8
+          ctest --test-dir build/default --parallel 8 -C Release
           (cd build/default && DESTDIR=$PWD/Install-default cmake --install .)
           # "ninja test" also works with multi-config
           env -C build/default ninja test
@@ -116,7 +116,7 @@ jobs:
           cmake -S . -B build/default
           cmake --build build/default --parallel --verbose
           # multi-config: ctest NEEDS a config
-          ctest --test-dir build/default -C Debug --parallel 8
+          ctest --test-dir build/default --parallel 8 -C Debug
           # TODO: does cmake --install work?
 
   # xcode-multi-config (xcodebuild) seems to use "Debug" by default, except for "cmake --install" (BUG?)
@@ -134,6 +134,6 @@ jobs:
           cmake -S . -B build/default -G Xcode
           cmake --build build/default --parallel --verbose
           # multi-config: ctest NEEDS a config
-          ctest --test-dir build/default -C Debug --parallel 8
+          ctest --test-dir build/default --parallel 8 -C Debug
           # BUG(?) multi-config: cmake --install defaults to "Release" !!
           (cd build/default && DESTDIR=$PWD/Install-default cmake --install . --config Debug)

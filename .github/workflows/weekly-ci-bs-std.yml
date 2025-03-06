@@ -10,7 +10,6 @@ env:
   CMAKE_VERBOSE_MAKEFILE: 'ON'
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
-  UPX_CONFIG_EXPECT_THREADS: 'ON'
   UPX_CMAKE_BUILD_FLAGS: --verbose
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
@@ -46,7 +45,7 @@ jobs:
             packages:  clang18
           - cxx:       g++ -std=gnu++20
             cc:        gcc -std=gnu17
-            container: alpine:3.20
+            container: alpine:3.20 # gcc-13
             packages:  g++
             xflags:    -flto=auto
           # C++23
@@ -60,13 +59,13 @@ jobs:
             packages:  clang18
           - cxx:       g++ -std=gnu++23
             cc:        gcc -std=gnu2x
-            container: alpine:3.20
+            container: alpine:3.20 # gcc-13
             packages:  g++
-          # C++26 (TODO later: need gcc-14)
-#         - cxx:       g++ -std=gnu++26
-#           cc:        gcc -std=gnu23
-#           container: alpine:edge
-#           packages:  g++
+          # C++26 (need gcc-14)
+          - cxx:       g++ -std=gnu++26
+            cc:        gcc -std=gnu23
+            container: alpine:3.21 # gcc-14
+            packages:  g++
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
     name: ${{ format('{0}', matrix.cxx) }}

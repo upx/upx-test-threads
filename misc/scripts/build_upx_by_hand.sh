@@ -116,7 +116,7 @@ if check_submodule zlib; then
     #upx_submodule_defs="$upx_submodule_defs -DWITH_ZLIB"
     test -z "${zlib_extra_flags+set}" && zlib_extra_flags="-DHAVE_UNISTD_H -DHAVE_VSNPRINTF"
     for f in "$rel_top_srcdir"/vendor/zlib/*.c; do
-        run "CC  $f" $CC $zlib_extra_flags -c "$f"
+        run "CC  $f" $CC -I"$rel_top_srcdir"/vendor/zlib $zlib_extra_flags -c "$f"
     done
 fi
 if check_submodule zstd; then
