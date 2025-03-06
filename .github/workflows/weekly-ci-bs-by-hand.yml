@@ -11,7 +11,6 @@ env:
   CTEST_OUTPUT_ON_FAILURE: 'ON'
   DEBIAN_FRONTEND: noninteractive
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
-  UPX_CONFIG_EXPECT_THREADS: 'ON'
   VERBOSE: 1
 
 jobs:
@@ -20,7 +19,7 @@ jobs:
     # ...and also uses ccache as we are running the same build-script again and again
     if: github.repository_owner == 'upx'
     # Alpine 3.9 + latest Alpine release + edge
-    strategy: { matrix: { container: ['alpine:3.9','alpine:3.20','alpine:edge','i386/alpine:edge'] } }
+    strategy: { matrix: { container: ['alpine:3.9','alpine:3.21','alpine:edge','i386/alpine:edge'] } }
     name: ${{ format('by-hand gcc {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -30,7 +29,7 @@ jobs:
           # install ccache, g++, git and various POSIX shells
           shells="bash dash loksh mksh zsh"
           case ${{ matrix.container }} in
-            *:3.20 | *:edge) shells="$shells oksh yash" ;;
+            *:3.21 | *:edge) shells="$shells oksh yash" ;;
           esac
           echo "installing shells: $shells"
           apk update && apk upgrade && apk add ccache g++ git $shells
@@ -114,9 +113,10 @@ jobs:
       matrix:
         include:
           # { os: macos-11, run_fs_test: false } # macos-11 is EOL; macos-11 does not have "readlink -f"
-          - { os: macos-12, run_fs_test: true }
+          # { os: macos-12, run_fs_test: true }
           - { os: macos-13, run_fs_test: true }
           - { os: macos-14, run_fs_test: true }
+          - { os: macos-15, run_fs_test: true }
     name: ${{ format('by-hand clang {0}', matrix.os) }}
     runs-on: ${{ matrix.os }}
     steps:
