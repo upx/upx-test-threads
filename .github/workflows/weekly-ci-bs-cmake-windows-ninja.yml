@@ -22,21 +22,27 @@ jobs:
       matrix:
         include:
           # cl (MSVC)
-          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64 }
-          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64_arm64 }
-          - { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64_x86 }
+          # { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64 }
+          # { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64_arm64 }
+          # { os: windows-2019, cc: cl, cxx: cl, vsversion: 2019, vsarch: amd64_x86 }
           - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64 }
           - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64_arm64 }
           - { os: windows-2022, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64_x86 }
+          - { os: windows-2025, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64 }
+          - { os: windows-2025, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64_arm64 }
+          - { os: windows-2025, cc: cl, cxx: cl, vsversion: 2022, vsarch: amd64_x86 }
           # clang-cl
-          - { os: windows-2019, cc: clang-cl, cxx: clang-cl, vsversion: 2019, vsarch: amd64 }
+          # { os: windows-2019, cc: clang-cl, cxx: clang-cl, vsversion: 2019, vsarch: amd64 }
           - { os: windows-2022, cc: clang-cl, cxx: clang-cl, vsversion: 2022, vsarch: amd64 }
+          - { os: windows-2025, cc: clang-cl, cxx: clang-cl, vsversion: 2022, vsarch: amd64 }
           # clang
-          - { os: windows-2019, cc: clang, cxx: 'clang++', vsarch: amd64, xflags: '-static' }
+          # { os: windows-2019, cc: clang, cxx: 'clang++', vsarch: amd64, xflags: '-static' }
           - { os: windows-2022, cc: clang, cxx: 'clang++', vsarch: amd64, xflags: '-static' }
+          - { os: windows-2025, cc: clang, cxx: 'clang++', vsarch: amd64, xflags: '-static' }
           # gcc (mingw-gcc)
-          - { os: windows-2019, cc: gcc, cxx: 'g++', vsarch: amd64, xflags: '-static' }
+          # { os: windows-2019, cc: gcc, cxx: 'g++', vsarch: amd64, xflags: '-static' }
           - { os: windows-2022, cc: gcc, cxx: 'g++', vsarch: amd64, xflags: '-static' }
+          - { os: windows-2025, cc: gcc, cxx: 'g++', vsarch: amd64, xflags: '-static' }
     env:
       CC: ${{ matrix.cc }} ${{ matrix.xflags }}
       CXX: ${{ matrix.cxx }} ${{ matrix.xflags }}
@@ -45,7 +51,7 @@ jobs:
     steps:
       - run: git config --global core.autocrlf false
       - name: 'Check out code'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with: { submodules: true }
       - name: 'Set up Developer Command Prompt'
         if: matrix.vsversion
@@ -89,7 +95,7 @@ jobs:
           (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la)
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
 
       - name: 'Run ctest tests'

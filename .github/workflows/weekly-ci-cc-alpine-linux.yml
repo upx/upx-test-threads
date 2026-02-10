@@ -45,6 +45,7 @@ jobs:
           - { container: 'alpine:3.19', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.20', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.21', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
+          - { container: 'alpine:3.22', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           - { container: 'alpine:edge', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           # more 32-bit i386 versions, just for testing
@@ -61,6 +62,7 @@ jobs:
           - { container: 'i386/alpine:3.19' } # clang-17, gcc-13
           - { container: 'i386/alpine:3.20' } # clang-17, gcc-13
           - { container: 'i386/alpine:3.21' } # clang-19, gcc-14
+          - { container: 'i386/alpine:3.22' } # clang-20, gcc-14
     name: ${{ format('container {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -204,7 +206,7 @@ jobs:
 
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         if: ${{ env.artifact_name }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ env.artifact_name }}
           path: 'upx with space*/build/*/*/*/upx'
@@ -227,6 +229,7 @@ jobs:
              echo "===== $dir"
              (cd "$dir" && ./upx --sysinfo -v)
              (cd "$dir" && ctest --parallel 8)
+             (cd "$dir" && find . -type d -name XTesting -print0 | xargs -0r rm -rf -v)
           done
 
       - name: 'Run file system test suite (busybox)'

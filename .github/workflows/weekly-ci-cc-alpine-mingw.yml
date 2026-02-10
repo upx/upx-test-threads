@@ -34,7 +34,8 @@ jobs:
           - { container: 'alpine:3.19', wine: true,  i686_mingw: true }  # wine-8.21
           - { container: 'alpine:3.20', wine: true,  i686_mingw: true }  # wine-9.0
           - { container: 'alpine:3.21', wine: true,  i686_mingw: true }  # wine-9.x
-          - { container: 'alpine:edge', wine: true,  i686_mingw: true }  # wine-9.x
+          - { container: 'alpine:3.22', wine: true,  i686_mingw: true }  # wine-10.x
+          - { container: 'alpine:edge', wine: true,  i686_mingw: true }  # wine-10.x
     name: ${{ format('container {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -99,7 +100,7 @@ jobs:
           (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la)
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
 
       - name: ${{ format('Run test suite with Wine') }}

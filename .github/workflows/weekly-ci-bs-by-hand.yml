@@ -19,7 +19,7 @@ jobs:
     # ...and also uses ccache as we are running the same build-script again and again
     if: github.repository_owner == 'upx'
     # Alpine 3.9 + latest Alpine release + edge
-    strategy: { matrix: { container: ['alpine:3.9','alpine:3.21','alpine:edge','i386/alpine:edge'] } }
+    strategy: { matrix: { container: ['alpine:3.9','alpine:3.22','alpine:edge','i386/alpine:edge'] } }
     name: ${{ format('by-hand gcc {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -29,7 +29,7 @@ jobs:
           # install ccache, g++, git and various POSIX shells
           shells="bash dash loksh mksh zsh"
           case ${{ matrix.container }} in
-            *:3.21 | *:edge) shells="$shells oksh yash" ;;
+            *:3.22 | *:edge) shells="$shells oksh yash" ;;
           esac
           echo "installing shells: $shells"
           apk update && apk upgrade && apk add ccache g++ git $shells
@@ -68,16 +68,16 @@ jobs:
       - name: 'Build by-hand with mksh -o sh'
         run: 'mksh -o sh "./upx with space/misc/scripts/build_upx_by_hand.sh"'
       - name: 'Build by-hand with oksh'
-        if: endsWith(matrix.container, ':3.20') || endsWith(matrix.container, ':edge')
+        if: endsWith(matrix.container, ':3.22') || endsWith(matrix.container, ':edge')
         run: 'oksh "./upx with space/misc/scripts/build_upx_by_hand.sh"'
       - name: 'Build by-hand with oksh -o posix'
-        if: endsWith(matrix.container, ':3.20') || endsWith(matrix.container, ':edge')
+        if: endsWith(matrix.container, ':3.22') || endsWith(matrix.container, ':edge')
         run: 'oksh -o posix "./upx with space/misc/scripts/build_upx_by_hand.sh"'
       - name: 'Build by-hand with oksh -o sh'
-        if: endsWith(matrix.container, ':3.20') || endsWith(matrix.container, ':edge')
+        if: endsWith(matrix.container, ':3.22') || endsWith(matrix.container, ':edge')
         run: 'oksh -o sh "./upx with space/misc/scripts/build_upx_by_hand.sh"'
       - name: 'Build by-hand with yash'
-        if: endsWith(matrix.container, ':3.20') || endsWith(matrix.container, ':edge')
+        if: endsWith(matrix.container, ':3.22') || endsWith(matrix.container, ':edge')
         run: 'yash "./upx with space/misc/scripts/build_upx_by_hand.sh"'
       - name: 'Build by-hand with zsh'
         run: 'zsh "./upx with space/misc/scripts/build_upx_by_hand.sh"'
@@ -112,8 +112,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # { os: macos-11, run_fs_test: false } # macos-11 is EOL; macos-11 does not have "readlink -f"
-          # { os: macos-12, run_fs_test: true }
           - { os: macos-13, run_fs_test: true }
           - { os: macos-14, run_fs_test: true }
           - { os: macos-15, run_fs_test: true }
@@ -153,8 +151,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-2019 }
           - { os: windows-2022 }
+          - { os: windows-2025 }
     name: ${{ format('by-hand clang {0}', matrix.os) }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -181,8 +179,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-2019 }
           - { os: windows-2022 }
+          - { os: windows-2025 }
     name: ${{ format('by-hand gcc {0}', matrix.os) }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -206,15 +204,15 @@ jobs:
       matrix:
         include:
           # clang-cl
-          - { os: windows-2019, vsversion: 2019, vsarch: amd64, clang_cl: true }
           - { os: windows-2022, vsversion: 2022, vsarch: amd64, clang_cl: true }
+          - { os: windows-2025, vsversion: 2022, vsarch: amd64, clang_cl: true }
           # msvc
-          - { os: windows-2019, vsversion: 2019, vsarch: amd64 }
-          - { os: windows-2019, vsversion: 2019, vsarch: amd64_arm64 }
-          - { os: windows-2019, vsversion: 2019, vsarch: amd64_x86 }
           - { os: windows-2022, vsversion: 2022, vsarch: amd64 }
           - { os: windows-2022, vsversion: 2022, vsarch: amd64_arm64 }
           - { os: windows-2022, vsversion: 2022, vsarch: amd64_x86 }
+          - { os: windows-2025, vsversion: 2022, vsarch: amd64 }
+          - { os: windows-2025, vsversion: 2022, vsarch: amd64_arm64 }
+          - { os: windows-2025, vsversion: 2022, vsarch: amd64_x86 }
     name: ${{ format('by-hand vs{0} {1} {2}', matrix.vsversion, matrix.vsarch, matrix.clang_cl && 'clang-cl' || '') }}
     runs-on: ${{ matrix.os }}
     steps:
