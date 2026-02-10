@@ -22,16 +22,16 @@ env:
   UPX_CMAKE_CONFIG_FLAGS: -Wdev --warn-uninitialized
   UPX_DEBUG_TEST_FLOAT_DIVISION_BY_ZERO: 1
   UPX_DEBUG_TEST_LIBC_QSORT: 1
-  # 2025-03-05
-  ZIG_DIST_VERSION: 0.14.0
+  ZSTD_CLEVEL: 9
+  # 2025-05-21
+  ZIG_DIST_VERSION: 0.14.1
 
 jobs:
   job-linux-zigcc: # uses cmake + make
     if: github.repository_owner == 'upx'
     name: ${{ format('zigcc {0} {1}', matrix.zig_target, matrix.zig_pic) }}
     runs-on: ubuntu-latest
-    # ci.yml uses alpine:3.21, so we test alpine:edge here
-    container: 'i386/alpine:edge'
+    container: 'i386/alpine:3.21'
     strategy:
       fail-fast: false
       matrix:
@@ -78,10 +78,11 @@ jobs:
         if: ${{ job.container }}
         shell: sh
         run: |
-          apk update && apk upgrade && apk add bash cmake file git make tar xz
+          apk update && apk upgrade && apk add bash cmake coreutils curl file git make parallel patch tar util-linux xz zstd
           # set PATH like in Ubuntu
           echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
           git config --global --add safe.directory '*' # needed when running in a container
+          mkdir -p ~/.parallel && : > ~/.parallel/$(echo 6305-4721 | tr 0-7 leticlwi)
       - name: 'Check out code'
         run: |
           git clone --branch "$GITHUB_REF_NAME" --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" .
@@ -91,14 +92,16 @@ jobs:
         run: |
           rev=$(git rev-parse --short=7 HEAD)
           echo "UPX_GITREV_SHORT=$rev" >> $GITHUB_ENV
-          if [[ "${{ matrix.zig_target }}" == i386-linux-gnu.2.3.4 ]]; then
+          if [[ "${{ matrix.zig_target }}" == i386-linux-gnu.2.3.* ]]; then true;
             echo "UPX_CONFIG_DISABLE_SHARED_LIBS=ON" >> $GITHUB_ENV # zig problem
           fi
           # install zig; note that ~/.local/bin is included in the default $PATH on Ubuntu
           mkdir -p -v ~/.local/bin
           cd ~/.local/bin
           ZIG_DIST_NAME=zig-linux-x86-${ZIG_DIST_VERSION}
-          wget -q https://ziglang.org/builds/${ZIG_DIST_NAME}.tar.xz
+          ZIG_DIST_NAME=zig-x86-linux-${ZIG_DIST_VERSION}
+          #curl -sS -L -O https://ziglang.org/builds/${ZIG_DIST_NAME}.tar.xz
+          curl -sS -L -O https://ziglang.org/download/0.14.1/${ZIG_DIST_NAME}.tar.xz
           ls -l ${ZIG_DIST_NAME}.tar.xz
           tar -xoJf ${ZIG_DIST_NAME}.tar.xz
           rm ${ZIG_DIST_NAME}.tar.xz
@@ -131,7 +134,7 @@ jobs:
             echo "UPX_CONFIG_DISABLE_SANITIZE=ON" >> $GITHUB_ENV
           fi
           echo "ZIG_FLAGS=$ZIG_FLAGS" >> $GITHUB_ENV
-      #- run: set -x; zig version; zig-cc --version; zig-cxx --version
+      - run: set -x; zig version; zig-cc --version || true; zig-cxx --version || true
       - run: zig-cc  -E -x c   -dM /dev/null # list predefined macros for C
       - run: zig-cxx -E -x c++ -dM /dev/null # list predefined macros for C++
       - name: ${{ format('Build Release with zig-cc -target {0} {1}', env.ZIG_TARGET, env.ZIG_PIC) }}
@@ -154,14 +157,13 @@ jobs:
             for d in $dirs; do DESTDIR="$PWD/tmp/artifact/$N/Install/$d" cmake --install build/zig/$d; done
           fi
           (cd build && shopt -s nullglob && cp -ai --parents */upx{,.exe} */*/*/upx{,.exe} "../tmp/artifact/$N")
-          (cd tmp/artifact && tar --sort=name -czf "$N.tar.gz" "$N" && rm -rf "./$N")
+          if command -v hardlink >/dev/null; then (cd "tmp/artifact/$N" && hardlink .) fi
+          (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la && zstd -tq "$N.tar.zst")
           echo "artifact_name=$N" >> $GITHUB_ENV
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         if: false # i386: missing nodejs on host
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.artifact_name }}
-          path: tmp/artifact
+        uses: actions/upload-artifact@v6
+        with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
       - name: 'Run install tests'
         if: ${{ contains(matrix.zig_target, '-linux') }}
         run: |

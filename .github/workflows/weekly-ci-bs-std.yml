@@ -61,7 +61,7 @@ jobs:
             cc:        gcc -std=gnu2x
             container: alpine:3.20 # gcc-13
             packages:  g++
-          # C++26 (need gcc-14)
+          # C++26
           - cxx:       g++ -std=gnu++26
             cc:        gcc -std=gnu23
             container: alpine:3.21 # gcc-14
@@ -99,9 +99,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-2019, vsversion: 2019, vsarch: amd64, cflags: '-std:c11', cxxflags: '-std:c++17' }
-          - { os: windows-2019, vsversion: 2019, vsarch: amd64, cflags: '-std:c17', cxxflags: '-std:c++20' }
-          - { os: windows-2019, vsversion: 2019, vsarch: amd64, cflags: '-std:clatest', cxxflags: '-std:c++latest' }
+          # { os: windows-2019, vsversion: 2019, vsarch: amd64, cflags: '-std:c11', cxxflags: '-std:c++17' }
+          # { os: windows-2019, vsversion: 2019, vsarch: amd64, cflags: '-std:c17', cxxflags: '-std:c++20' }
+          # { os: windows-2019, vsversion: 2019, vsarch: amd64, cflags: '-std:clatest', cxxflags: '-std:c++latest' }
           - { os: windows-2022, vsversion: 2022, vsarch: amd64, cflags: '-std:c11', cxxflags: '-std:c++17' }
           - { os: windows-2022, vsversion: 2022, vsarch: amd64, cflags: '-std:c17', cxxflags: '-std:c++20' }
           - { os: windows-2022, vsversion: 2022, vsarch: amd64, cflags: '-std:clatest', cxxflags: '-std:c++latest' }
@@ -113,7 +113,7 @@ jobs:
       CXXFLAGS: ${{ matrix.cxxflags }}
     steps:
       - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { submodules: true }
       - uses: ilammy/msvc-dev-cmd@v1
         with: { vsversion: '${{ matrix.vsversion }}', arch: '${{ matrix.vsarch }}' }
