@@ -138,7 +138,7 @@ jobs:
       - run: make build/extra/${C}-std-cxx20/all+test
       - run: make build/extra/${C}-std-cxx23/all+test
       - run: make build/extra/${C}-std-cxx26/all+test # need gcc-14
-        if: endsWith(matrix.container, ':edge') && matrix.cc == 'cc'
+        if: endsWith(matrix.container, ':edge')
       - run: make build/extra/${C}-m32/all+test
         if: ${{ startsWith(matrix.container, 'i386/') }}
       - run: make build/extra/${C}-m64/all+test

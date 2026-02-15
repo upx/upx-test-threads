@@ -112,9 +112,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-13, run_fs_test: true }
           - { os: macos-14, run_fs_test: true }
           - { os: macos-15, run_fs_test: true }
+          - { os: macos-26, run_fs_test: true }
     name: ${{ format('by-hand clang {0}', matrix.os) }}
     runs-on: ${{ matrix.os }}
     steps:
