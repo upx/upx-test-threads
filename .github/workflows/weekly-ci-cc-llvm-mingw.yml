@@ -7,6 +7,7 @@ name: 'Weekly CI CC - llvm-mingw'
 on:
   schedule: [cron: '30 2 * * 3'] # run weekly Wednesday 02:30 UTC
   workflow_dispatch:
+defaults: { run: { shell: bash } }
 env:
   CMAKE_REQUIRED_QUIET: 'OFF'
   CMAKE_VERBOSE_MAKEFILE: 'ON'
@@ -75,13 +76,13 @@ jobs:
     container: ubuntu:24.04
     env:
       CMAKE_SYSTEM_NAME: Windows
-      xflags: -D_WIN32_WINNT=0x0400
+      xflags: -D_WIN32_WINNT=0x0501
     steps:
       - name: Install packages
         run: |
           dpkg --add-architecture i386
           apt-get update && apt-get upgrade -y
-          apt-get install -y --no-install-recommends bash ca-certificates cmake curl file git make tar time util-linux wine wine32:i386 wine64 xz-utils zstd
+          apt-get install -y --no-install-recommends bash ca-certificates cmake curl file git make parallel tar time util-linux wine wine32:i386 wine64 xz-utils zstd
           git config --global --add safe.directory '*' # needed when running in a container
           ls -l /usr/bin/wine*
           mkdir -p -v ~/.wine
@@ -89,6 +90,8 @@ jobs:
       - name: 'Check out code'
         uses: actions/checkout@v6
         with: { submodules: true }
+      - name: Check out test suite
+        run: git clone --depth=1 https://github.com/upx/upx-testsuite ../deps/upx-testsuite
       - name: ${{ format('Install {0} {1}', matrix.name, matrix.llvm_version) }}
         run: |
           mkdir -p -v ~/.local/bin
@@ -109,6 +112,19 @@ jobs:
         run: |
           export CC="aarch64-w64-mingw32-clang -static $xflags" CXX="aarch64-w64-mingw32-clang++ -static $xflags"
           make UPX_XTARGET=llvm-mingw/aarch64-w64-mingw32-clang-static xtarget/all
+
+      - name: 'Build clang arm64ec'
+        if: ${{ matrix.use_arm64ec }}
+        run: |
+          export CC="arm64ec-w64-mingw32-clang $xflags" CXX="arm64ec-w64-mingw32-clang++ $xflags"
+          export UPX_CONFIG_DISABLE_SAVE_TEMPS=ON
+          make UPX_XTARGET=llvm-mingw/arm64ec-w64-mingw32-clang xtarget/all
+      - name: 'Build clang arm64ec static'
+        if: ${{ matrix.use_arm64ec }}
+        run: |
+          export CC="arm64ec-w64-mingw32-clang -static $xflags" CXX="arm64ec-w64-mingw32-clang++ -static $xflags"
+          export UPX_CONFIG_DISABLE_SAVE_TEMPS=ON
+          make UPX_XTARGET=llvm-mingw/arm64ec-w64-mingw32-clang-static xtarget/all
 
       - name: 'Build clang armv7'
         run: |
@@ -143,21 +159,7 @@ jobs:
           export CMAKE_CROSSCOMPILING_EMULATOR=wine
           make UPX_XTARGET=llvm-mingw/x86_64-w64-mingw32-clang-static xtarget/all
 
-      - name: 'Build clang arm64ec'
-        if: ${{ matrix.use_arm64ec }}
-        run: |
-          export CC="arm64ec-w64-mingw32-clang $xflags" CXX="arm64ec-w64-mingw32-clang++ $xflags"
-          export UPX_CONFIG_DISABLE_SAVE_TEMPS=ON
-          make UPX_XTARGET=llvm-mingw/arm64ec-w64-mingw32-clang xtarget/all
-      - name: 'Build clang arm64ec static'
-        if: ${{ matrix.use_arm64ec }}
-        run: |
-          export CC="arm64ec-w64-mingw32-clang -static $xflags" CXX="arm64ec-w64-mingw32-clang++ -static $xflags"
-          export UPX_CONFIG_DISABLE_SAVE_TEMPS=ON
-          make UPX_XTARGET=llvm-mingw/arm64ec-w64-mingw32-clang-static xtarget/all
-
       - name: 'Make artifact'
-        shell: bash
         run: |
           ls -l build/*/*/*/upx.exe
           file  build/*/*/*/upx.exe || true
@@ -173,7 +175,8 @@ jobs:
             cmake --install $d --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefix/$d"
             cmake --install $d --prefix "$PWD/tmp/artifact/$N/InstallWithCMake/InstallWithPrefixAndStrip/$d" --strip
           done
-          (cd build && cp -ai --parents */*/*/upx.exe "../tmp/artifact/$N")
+          (cd build && cp -v -ai --parents */*/*/upx.exe "../tmp/artifact/$N")
+          (cd build && shopt -s globstar && cp -v -ai --parents **/dt_cxxlib.* "../tmp/artifact/$N")
           if command -v hardlink >/dev/null; then (cd "tmp/artifact/$N" && hardlink .) fi
           (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la && zstd -tq "$N.tar.zst")
           echo "artifact_name=$N" >> $GITHUB_ENV
@@ -182,6 +185,25 @@ jobs:
         with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
 
       - name: 'Run ctest tests i686 static with Wine'
-        run: make UPX_XTARGET=llvm-mingw/i686-w64-mingw32-clang-static xtarget/all+test
+        run: |
+          make UPX_XTARGET=llvm-mingw/i686-w64-mingw32-clang-static xtarget/all+test
+          ls -ld ./build/*/*/*/XTesting/*/* || true
+          rm -rf ./build/*/*/*/XTesting/*/*
       - name: 'Run ctest tests x86_64 static with Wine'
-        run: make UPX_XTARGET=llvm-mingw/x86_64-w64-mingw32-clang-static xtarget/all+test
+        run: |
+          make UPX_XTARGET=llvm-mingw/x86_64-w64-mingw32-clang-static xtarget/all+test
+          ls -ld ./build/*/*/*/XTesting/*/* || true
+          rm -rf ./build/*/*/*/XTesting/*/*
+
+      - name: 'Run test suite under Wine'
+        if: false
+        run: |
+          export upx_exe_runner=wine
+          export upx_exe=./upx.exe
+          export upx_testsuite_SRCDIR="$(readlink -en ../deps/upx-testsuite)"
+          jobs="i686-w64-mingw32-clang-static/debug i686-w64-mingw32-clang-static/release"
+          jobs="$jobs x86_64-w64-mingw32-clang-static/debug x86_64-w64-mingw32-clang-static/release"
+          echo "===== parallel jobs: $jobs"
+          parallel -kv --lb 'cd build/llvm-mingw/{} && bash ../../../../misc/testsuite/upx_testsuite_1.sh' ::: $jobs
+          ls -ld ./build/*/*/*/tmp-upx-testsuite* || true
+          rm -rf ./build/*/*/*/tmp-upx-testsuite*
