@@ -46,6 +46,7 @@ jobs:
           - { container: 'alpine:3.20', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.21', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           - { container: 'alpine:3.22', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
+          - { container: 'alpine:3.23', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           - { container: 'alpine:edge', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           # more 32-bit i386 versions, just for testing
@@ -63,6 +64,7 @@ jobs:
           - { container: 'i386/alpine:3.20' } # clang-17, gcc-13
           - { container: 'i386/alpine:3.21' } # clang-19, gcc-14
           - { container: 'i386/alpine:3.22' } # clang-20, gcc-14
+          - { container: 'i386/alpine:3.23' } # clang-21, gcc-15
     name: ${{ format('container {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -82,10 +84,10 @@ jobs:
           x="$(apk list -I "$(apk info -Wq "$(which clang)")")"; echo "clang_package=${x%% *}" >> $GITHUB_ENV
           x="$(apk list -I "$(apk info -Wq "$(which gcc)")")"; echo "gcc_package=${x%% *}" >> $GITHUB_ENV
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-alpine-${{ matrix.container }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
-          # currently need at least Alpine >= 3.11 for working nodejs on current GitHub Actions runner host
+          # currently need at least Alpine >= 3.16 for working nodejs on current GitHub Actions runner host
           case "${{ matrix.container }}" in
             i386/*) ;; # i386: missing nodejs on GitHub runner host
-            *:3.[0-9] | *:3.10) ;;
+            *:3.[0-9] | *:3.1[0-5]) ;;
             *) echo "artifact_name=$N" >> $GITHUB_ENV ;;
           esac
           # create user upx:upx 2000:2000 for file system tests below ("sudo")
