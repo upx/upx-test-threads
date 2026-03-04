@@ -23,10 +23,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-13 }
-          - { os: macos-13, xcode_version: 14.3.1 }
           - { os: macos-14 }
           - { os: macos-15 }
+          - { os: macos-26 }
+          - { os: macos-15-intel }
     name: ${{ format('cmake Xcode {0} {1}{2}', matrix.os, matrix.xcode_version && 'xcode-' || '',  matrix.xcode_version) }}
     runs-on: ${{ matrix.os }}
     env:
@@ -47,7 +47,7 @@ jobs:
           echo "UPX_DEBUG_FORCE_PACK_MACOS=1" >> $GITHUB_ENV
           case "${{ matrix.os }}" in
             # TODO FIXME: UPX on macos-13+ is broken => disable run-packed for now
-            macos-1[345]) echo "UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON" >> $GITHUB_ENV ;;
+            macos-[12][3456]*) echo "UPX_CONFIG_DISABLE_RUN_PACKED_TEST=ON" >> $GITHUB_ENV ;;
           esac
       - run: set -x; xcode-select -p || true; xcodebuild -version || true
       - run: set -x; clang --version; clang++ --version
