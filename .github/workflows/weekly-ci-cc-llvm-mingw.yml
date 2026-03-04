@@ -76,7 +76,7 @@ jobs:
     container: ubuntu:24.04
     env:
       CMAKE_SYSTEM_NAME: Windows
-      xflags: -D_WIN32_WINNT=0x0501
+      xflags: -D_WIN32_WINNT=0x0601
     steps:
       - name: Install packages
         run: |
