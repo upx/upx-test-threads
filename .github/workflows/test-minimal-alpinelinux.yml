@@ -23,8 +23,8 @@ jobs:
     steps:
       - name: ${{ format('Build clang {0}', matrix.container) }}
         run: |
-          apk update && apk upgrade && apk add clang cmake make
-          wget https://github.com/upx/upx/releases/download/v5.1.0/upx-5.1.0-src.tar.xz
+          apk update && apk upgrade && apk add binutils clang cmake g++ make
+          wget https://github.com/upx/upx/releases/download/v5.2.0/upx-5.2.0-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug+test   CC="clang -static" CXX="clang++ -static"
@@ -51,7 +51,7 @@ jobs:
       - name: ${{ format('Build gcc {0}', matrix.container) }}
         run: |
           apk update && apk upgrade && apk add cmake g++ make
-          wget https://github.com/upx/upx/releases/download/v5.1.0/upx-5.1.0-src.tar.xz
+          wget https://github.com/upx/upx/releases/download/v5.2.0/upx-5.2.0-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug+test   CC="gcc -static" CXX="g++ -static"
