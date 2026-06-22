@@ -22,7 +22,7 @@ jobs:
       - name: ${{ format('Build clang {0}', matrix.container) }}
         run: |
           apk update && apk upgrade && apk add bsdtar clang cmake curl gmake
-          curl -sS -L -O https://github.com/upx/upx/releases/download/v5.1.0/upx-5.1.0-src.tar.xz
+          curl -sS -L -O https://github.com/upx/upx/releases/download/v5.2.0/upx-5.2.0-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug+test   CC="clang" CXX="clang++"
@@ -51,7 +51,7 @@ jobs:
           apk update && apk upgrade && apk add bsdtar clang cmake curl gmake
           # install devel-static packages
           apk add libatomic-chimera-devel-static libcxx-devel-static musl-devel-static
-          curl -sS -L -O https://github.com/upx/upx/releases/download/v5.1.0/upx-5.1.0-src.tar.xz
+          curl -sS -L -O https://github.com/upx/upx/releases/download/v5.2.0/upx-5.2.0-src.tar.xz
           tar -xoaf upx-*-src.tar.xz
           cd upx-*-src
           make    build/debug+test   CC="clang -static" CXX="clang++ -static"
