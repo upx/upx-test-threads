@@ -26,6 +26,125 @@
 
 #include "utest_c.c"
 #include "../conf.h"
+#undef index // conf.h: upx_renamed_index
+
+/*************************************************************************
+//
+**************************************************************************/
+
+namespace {
+
+template <class T>
+struct ptr_level {
+    enum { value = 0 };
+    typedef T element_type;
+    typedef const T const_element_type;
+};
+template <class T>
+struct ptr_level<T *> {
+    enum { value = ptr_level<T>::value + 1 };
+    //    typedef typename ptr_level<T>::element_type *pointer;
+    //    typedef typename ptr_level<T>::const_pointer const_pointer;
+};
+template <class T>
+struct ptr_level<const T *> {
+    enum { value = ptr_level<T>::value + 1 };
+    //    typedef typename ptr_level<T>::pointer pointer;
+    //    typedef const typename ptr_level<T>::const_pointer const_pointer;
+};
+
+template <class T, class U>
+static inline constexpr bool is_same = std::is_same_v<T, U>;
+
+template <class T>
+struct PtrTypes {
+    typedef T *v_p;
+    typedef const T *v_c;
+    static_assert(ptr_level<v_p>::value == 1);
+    static_assert(ptr_level<v_c>::value == 1);
+    //    static_assert(is_same<v_p, ptr_level<v_p>::pointer>);
+
+    typedef v_p *v_p_p;
+    typedef v_c *v_c_p;
+    typedef const v_p *v_p_c;
+    typedef const v_c *v_c_c;
+    static_assert(is_same<v_p_p, T **>);
+    static_assert(is_same<v_c_p, const T **>);
+    static_assert(is_same<v_p_c, T *const *>);
+    static_assert(is_same<v_c_c, const T *const *>);
+    static_assert(ptr_level<v_p_p>::value == 2);
+    static_assert(ptr_level<v_c_p>::value == 2);
+    static_assert(ptr_level<v_p_c>::value == 2);
+    static_assert(ptr_level<v_c_c>::value == 2);
+
+    typedef v_p_p *v_p_p_p;
+    typedef v_c_p *v_c_p_p;
+    typedef v_p_c *v_p_c_p;
+    typedef v_c_c *v_c_c_p;
+    typedef const v_p_p *v_p_p_c;
+    typedef const v_c_p *v_c_p_c;
+    typedef const v_p_c *v_p_c_c;
+    typedef const v_c_c *v_c_c_c;
+    static_assert(is_same<v_p_p_p, T ***>);
+    static_assert(is_same<v_c_p_p, const T ***>);
+    static_assert(is_same<v_p_c_p, T *const **>);
+    static_assert(is_same<v_c_c_p, const T *const **>);
+    static_assert(is_same<v_p_p_c, T **const *>);
+    static_assert(is_same<v_c_p_c, const T **const *>);
+    static_assert(is_same<v_p_c_c, T *const *const *>);
+    static_assert(is_same<v_c_c_c, const T *const *const *>);
+    static_assert(ptr_level<v_p_p_p>::value == 3);
+    static_assert(ptr_level<v_c_p_p>::value == 3);
+    static_assert(ptr_level<v_p_c_p>::value == 3);
+    static_assert(ptr_level<v_c_c_p>::value == 3);
+    static_assert(ptr_level<v_p_p_c>::value == 3);
+    static_assert(ptr_level<v_c_p_c>::value == 3);
+    static_assert(ptr_level<v_p_c_c>::value == 3);
+    static_assert(ptr_level<v_c_c_c>::value == 3);
+
+    typedef v_p_p_p *v_p_p_p_p;
+    typedef v_c_p_p *v_c_p_p_p;
+    typedef v_p_c_p *v_p_c_p_p;
+    typedef v_c_c_p *v_c_c_p_p;
+    typedef v_p_p_c *v_p_p_c_p;
+    typedef v_c_p_c *v_c_p_c_p;
+    typedef v_p_c_c *v_p_c_c_p;
+    typedef v_c_c_c *v_c_c_c_p;
+    typedef const v_p_p_p *v_p_p_p_c;
+    typedef const v_c_p_p *v_c_p_p_c;
+    typedef const v_p_c_p *v_p_c_p_c;
+    typedef const v_c_c_p *v_c_c_p_c;
+    typedef const v_p_p_c *v_p_p_c_c;
+    typedef const v_c_p_c *v_c_p_c_c;
+    typedef const v_p_c_c *v_p_c_c_c;
+    typedef const v_c_c_c *v_c_c_c_c;
+    static_assert(is_same<v_p_p_p_p, T ****>);
+    static_assert(is_same<v_c_p_p_p, const T ****>);
+    static_assert(is_same<v_p_c_p_p, T *const ***>);
+    static_assert(is_same<v_c_c_p_p, const T *const ***>);
+    static_assert(is_same<v_p_p_c_p, T **const **>);
+    static_assert(is_same<v_c_p_c_p, const T **const **>);
+    static_assert(is_same<v_p_c_c_p, T *const *const **>);
+    static_assert(is_same<v_c_c_c_p, const T *const *const **>);
+    static_assert(is_same<v_p_p_p_c, T ***const *>);
+    static_assert(is_same<v_c_p_p_c, const T ***const *>);
+    static_assert(is_same<v_p_c_p_c, T *const **const *>);
+    static_assert(is_same<v_c_c_p_c, const T *const **const *>);
+    static_assert(is_same<v_p_p_c_c, T **const *const *>);
+    static_assert(is_same<v_c_p_c_c, const T **const *const *>);
+    static_assert(is_same<v_p_c_c_c, T *const *const *const *>);
+    static_assert(is_same<v_c_c_c_c, const T *const *const *const *>);
+};
+
+} // namespace
+
+UTEST(utest, ptr_depth) {
+    PtrTypes<void> vpt;
+    PtrTypes<long> lpt;
+    (void) vpt;
+    (void) lpt;
+    ASSERT_TRUE(1);
+}
 
 /*************************************************************************
 // upx_utest_check()
