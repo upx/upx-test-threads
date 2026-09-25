@@ -37,14 +37,17 @@ jobs:
           - { container: 'alpine:3.11', use_cxx20: 0, use_cxx2b: 0, use_lto: 0 }
           - { container: 'alpine:3.12', use_cxx20: 0, use_cxx2b: 0, use_lto: 0 }
           - { container: 'alpine:3.13', use_cxx20: 0, use_cxx2b: 0, use_lto: 0 } # Jan 2021: C++20; clang-10 & gcc-10; INFO: clang-10 is NOT fully C++20 compatible
-          - { container: 'alpine:3.14', use_cxx20: 1, use_cxx2b: 0, use_lto: 0 } # Jun 2021: C++20; clang-11 & gcc-10
-          - { container: 'alpine:3.15', use_cxx20: 1, use_cxx2b: 0, use_lto: 1 } # Nov 2021: LTO;   clang-12 & gcc-10 & binutils-2.37
+          - { container: 'alpine:3.14', use_cxx20: 0, use_cxx2b: 0, use_lto: 0 } # Jun 2021: C++20; clang-11 & gcc-10
+          - { container: 'alpine:3.15', use_cxx20: 0, use_cxx2b: 0, use_lto: 1 } # Nov 2021: LTO;   clang-12 & gcc-10 & binutils-2.37
           - { container: 'alpine:3.16', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 } # May 2022: C++2b; clang-13 & gcc-11
           - { container: 'alpine:3.17', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.18', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.19', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.20', use_cxx20: 1, use_cxx2b: 1, use_lto: 2 }
           - { container: 'alpine:3.21', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
+          - { container: 'alpine:3.22', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
+          - { container: 'alpine:3.23', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
+          - { container: 'alpine:3.24', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           - { container: 'alpine:edge', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           - { container: 'i386/alpine:edge', use_cxx20: 1, use_cxx23: 1, use_lto: 2 }
           # more 32-bit i386 versions, just for testing
@@ -61,6 +64,9 @@ jobs:
           - { container: 'i386/alpine:3.19' } # clang-17, gcc-13
           - { container: 'i386/alpine:3.20' } # clang-17, gcc-13
           - { container: 'i386/alpine:3.21' } # clang-19, gcc-14
+          - { container: 'i386/alpine:3.22' } # clang-20, gcc-14
+          - { container: 'i386/alpine:3.23' } # clang-21, gcc-15
+          - { container: 'i386/alpine:3.24' } # clang-22, gcc-15
     name: ${{ format('container {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -80,10 +86,10 @@ jobs:
           x="$(apk list -I "$(apk info -Wq "$(which clang)")")"; echo "clang_package=${x%% *}" >> $GITHUB_ENV
           x="$(apk list -I "$(apk info -Wq "$(which gcc)")")"; echo "gcc_package=${x%% *}" >> $GITHUB_ENV
           N=$(echo "upx-${GITHUB_REF_NAME}-${GITHUB_SHA:0:7}-weekly-ci-alpine-${{ matrix.container }}" | sed 's/[^0-9a-zA-Z_.-]/-/g')
-          # currently need at least Alpine >= 3.11 for working nodejs on current GitHub Actions runner host
+          # currently need at least Alpine >= 3.16 for working nodejs on current GitHub Actions runner host
           case "${{ matrix.container }}" in
             i386/*) ;; # i386: missing nodejs on GitHub runner host
-            *:3.[0-9] | *:3.10) ;;
+            *:3.[0-9] | *:3.1[0-5]) ;;
             *) echo "artifact_name=$N" >> $GITHUB_ENV ;;
           esac
           # create user upx:upx 2000:2000 for file system tests below ("sudo")
@@ -204,7 +210,7 @@ jobs:
 
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
         if: ${{ env.artifact_name }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.artifact_name }}
           path: 'upx with space*/build/*/*/*/upx'
@@ -225,8 +231,9 @@ jobs:
           for dir in "upx with space"/build/*/*/*; do ls -l "$dir"/upx; done
           for dir in "upx with space"/build/*/*/*; do
              echo "===== $dir"
-             (cd "$dir" && ./upx --sysinfo -v)
+             (cd "$dir" && ./upx --sysinfo -vv)
              (cd "$dir" && ctest --parallel 8)
+             (cd "$dir" && find . -type d -name XTesting -print0 | xargs -0r rm -rf -v)
           done
 
       - name: 'Run file system test suite (busybox)'
