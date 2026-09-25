@@ -156,6 +156,17 @@ add_subdirectory(vendor/acx)
 if(${CMAKE_VERSION} VERSION_GREATER "3.4.99") # need cmake-3.5
     add_subdirectory(vendor/cmt)
 endif()
+if(NOT DEFINED LZO_CONFIG_DISABLE_SHARED_LIBS AND UPX_CONFIG_DISABLE_SHARED_LIBS)
+    set(LZO_CONFIG_DISABLE_SHARED_LIBS ON)
+endif()
+if(NOT DEFINED LZO_CONFIG_HAVE_WORKING_BUILD_RPATH AND UPX_CONFIG_HAVE_WORKING_BUILD_RPATH)
+    set(LZO_CONFIG_HAVE_WORKING_BUILD_RPATH ON)
+endif()
+if(${CMAKE_VERSION} VERSION_LESS "3.5") # need cmake-3.5
+elseif(CMAKE_C_COMPILER_ARG1 MATCHES "sanitize=memory") # LZO is not MSAN safe
+else()
+    add_subdirectory(vendor/lzo)
+endif()
 
 #***********************************************************************
 # common compilation flags
