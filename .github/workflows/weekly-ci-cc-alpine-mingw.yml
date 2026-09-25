@@ -34,7 +34,10 @@ jobs:
           - { container: 'alpine:3.19', wine: true,  i686_mingw: true }  # wine-8.21
           - { container: 'alpine:3.20', wine: true,  i686_mingw: true }  # wine-9.0
           - { container: 'alpine:3.21', wine: true,  i686_mingw: true }  # wine-9.x
-          - { container: 'alpine:edge', wine: true,  i686_mingw: true }  # wine-9.x
+          - { container: 'alpine:3.22', wine: true,  i686_mingw: true }  # wine-10.x
+          - { container: 'alpine:3.23', wine: true,  i686_mingw: true }  # wine-xx.x
+          - { container: 'alpine:3.24', wine: true,  i686_mingw: true }  # wine-xx.x
+          - { container: 'alpine:edge', wine: true,  i686_mingw: true }  # wine-xx.x
     name: ${{ format('container {0}', matrix.container) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
@@ -67,7 +70,7 @@ jobs:
         run: |
           # on Alpine 3.11 and 3.12 CMake does not find AR; Alpine >= 3.13 (with CMake 3.18.4) works
           X=
-          case ${{ matrix.container }} in
+          case "${{ matrix.container }}" in
             *:3.1[12]) X="CMAKE_AR=/usr/bin/x86_64-w64-mingw32-ar" ;;
           esac
           make build/extra/cross-windows-mingw64/debug $X
@@ -75,7 +78,7 @@ jobs:
         run: |
           # on Alpine 3.11 and 3.12 CMake does not find AR; Alpine >= 3.13 (with CMake 3.18.4) works
           X=
-          case ${{ matrix.container }} in
+          case "${{ matrix.container }}" in
             *:3.1[12]) X="CMAKE_AR=/usr/bin/x86_64-w64-mingw32-ar" ;;
           esac
           make build/extra/cross-windows-mingw64/release $X
@@ -97,9 +100,16 @@ jobs:
           (cd build && shopt -s nullglob && cp -ai --parents */upx{,.exe} */*/*/upx{,.exe} "../tmp/artifact/$N")
           if command -v hardlink >/dev/null; then (cd "tmp/artifact/$N" && hardlink .) fi
           (cd tmp/artifact && tar --sort=name --zstd -cf "$N.tar.zst" "$N" && rm -rf "./$N" && ls -la)
-          echo "artifact_name=$N" >> $GITHUB_ENV
+          # currently need at least Alpine >= 3.16 for working nodejs on current GitHub Actions runner host
+          case "${{ matrix.container }}" in
+            i386/*) ;; # i386: missing nodejs on GitHub runner host
+            *:3.[0-9] | *:3.1[0-5]) ;;
+            *) echo "artifact_name=$N" >> $GITHUB_ENV ;;
+          esac
+
       - name: ${{ format('Upload artifact {0}', env.artifact_name) }}
-        uses: actions/upload-artifact@v4
+        if: ${{ env.artifact_name }}
+        uses: actions/upload-artifact@v7
         with: { name: '${{ env.artifact_name }}', path: tmp/artifact }
 
       - name: ${{ format('Run test suite with Wine') }}
@@ -130,7 +140,7 @@ jobs:
           wine=wine
           tt='./upx.exe'
           $wine ./upx.exe --version-short
-          $wine ./upx.exe --sysinfo -v
+          $wine ./upx.exe --sysinfo -vv
           $wine ./upx.exe -3 $tt -o tt.packed.exe
           $wine ./upx.exe -l tt.packed.exe
           $wine ./upx.exe -t tt.packed.exe
@@ -149,7 +159,7 @@ jobs:
           wine=wine
           tt='./upx.exe'
           $wine ./upx.exe --version-short
-          $wine ./upx.exe --sysinfo -v
+          $wine ./upx.exe --sysinfo -vv
           $wine ./upx.exe -3 $tt -o tt.packed.exe
           $wine ./upx.exe -l tt.packed.exe
           $wine ./upx.exe -t tt.packed.exe
@@ -168,7 +178,7 @@ jobs:
           wine=wine
           tt='./upx.exe'
           $wine ./upx.exe --version-short
-          $wine ./upx.exe --sysinfo -v
+          $wine ./upx.exe --sysinfo -vv
           $wine ./upx.exe -3 $tt -o tt.packed.exe
           $wine ./upx.exe -l tt.packed.exe
           $wine ./upx.exe -t tt.packed.exe
@@ -187,7 +197,7 @@ jobs:
           wine=wine
           tt='./upx.exe'
           $wine ./upx.exe --version-short
-          $wine ./upx.exe --sysinfo -v
+          $wine ./upx.exe --sysinfo -vv
           $wine ./upx.exe -3 $tt -o tt.packed.exe
           $wine ./upx.exe -l tt.packed.exe
           $wine ./upx.exe -t tt.packed.exe

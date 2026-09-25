@@ -33,7 +33,7 @@ jobs:
           esac
           git config --global --add safe.directory '*' # needed when running in a container
       - name: 'Check out code'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with: { submodules: false }
       - name: ${{ format('YAML check {0}', matrix.container) }}
         shell: bash
